@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/chem-calculator/static/css/main.a87bf15d.css",
+    "main.js": "/chem-calculator/static/js/main.6efe9178.js",
+    "index.html": "/chem-calculator/index.html",
+    "main.a87bf15d.css.map": "/chem-calculator/static/css/main.a87bf15d.css.map",
+    "main.6efe9178.js.map": "/chem-calculator/static/js/main.6efe9178.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.a87bf15d.css",
+    "static/js/main.6efe9178.js"
+  ]
+}
