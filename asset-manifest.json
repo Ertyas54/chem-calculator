@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "/chem-calculator/static/css/main.a87bf15d.css",
-    "main.js": "/chem-calculator/static/js/main.6efe9178.js",
+    "main.css": "/chem-calculator/static/css/main.4d04a64a.css",
+    "main.js": "/chem-calculator/static/js/main.684ffecd.js",
     "index.html": "/chem-calculator/index.html",
-    "main.a87bf15d.css.map": "/chem-calculator/static/css/main.a87bf15d.css.map",
-    "main.6efe9178.js.map": "/chem-calculator/static/js/main.6efe9178.js.map"
+    "main.4d04a64a.css.map": "/chem-calculator/static/css/main.4d04a64a.css.map",
+    "main.684ffecd.js.map": "/chem-calculator/static/js/main.684ffecd.js.map"
   },
   "entrypoints": [
-    "static/css/main.a87bf15d.css",
-    "static/js/main.6efe9178.js"
+    "static/css/main.4d04a64a.css",
+    "static/js/main.684ffecd.js"
   ]
 }
