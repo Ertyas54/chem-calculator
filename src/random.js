@@ -1,5 +1,12 @@
-import { STATE_NAMES, CONTROL_NAMES } from './solver'
+// ============================================================
+// Генерация случайных значений коэффициентов K1…K15 и R1…R4.
+// Значения согласованы между собой — соблюдаются физические
+// связи (пострадавшие ≤ людей, растворы ≥ площади и т.д.).
+// ============================================================
 
+import { getAllCoefficientNames } from './polynomials'
+
+// ---------- Утилиты ----------
 function randRange(min, max) {
   if (max <= min) return min
   return min + Math.random() * (max - min)
@@ -21,149 +28,110 @@ function round(value, digits = 2) {
   return Math.round(value * p) / p
 }
 
-export function randomK0() {
-  const K = {}
+// ------------------------------------------------------------
+// Модельные константы для связей
+// ------------------------------------------------------------
+const CONST = {
+  RESCUERS_PER_MCHS: 50,
+  SOLUTION_PER_KM2: 5,
+  FORCES_PER_TECH: 2,
+  MAX_AFFECTED_RATIO: 0.8,
+  MAX_RESCUERS_RATIO: 0.2,
+}
 
-  const scale = Math.random() 
-  const s = 0.5 * (scale + Math.pow(scale, 0.7))
+// ------------------------------------------------------------
+// Главная функция — генерирует все коэффициенты согласованно
+// ------------------------------------------------------------
+function generateConsistentValues() {
+  const v = {}
 
-  K.K13 = randInt(10 + s * s * 4990, 20 + s * s * 5000)
+  // --- 1. Независимые «якорные» величины ---
+  v.K13 = randInt(50, 3000)             // люди в зоне
+  v.K3  = round(randRange(1, 25), 2)    // площадь заражения
+  v.K15 = round(randRange(1, 9), 2)     // развитость МЧС
+  v.K1  = round(randRange(5, 45), 2)    // время испарения
+  v.K2  = round(randRange(Math.max(6, v.K1), 100), 2) // время ликвидации
 
-  K.K3 = round(0.5 + s * 29.5 + randRange(-1, 1), 2)
-  K.K3 = clamp(K.K3, 0.3, 35)
+  // --- 2. Пострадавшие (K7 + K8 ≤ K13) ---
+  const maxAffected = Math.floor(v.K13 * CONST.MAX_AFFECTED_RATIO)
+  const affectedTotal = randInt(0, maxAffected)
+  const ambulatoryRatio = randRange(0.5, 0.9)
+  v.K7 = Math.round(affectedTotal * ambulatoryRatio)
+  v.K8 = affectedTotal - v.K7
 
-  K.K15 = round(1 + s * 9, 2)
-
-  K.K1 = round(2 + s * 46, 2)
-
-  K.K2 = round(K.K1 + 5 + s * 100, 2)
-
-  const affectedRatio = randRange(0.2, 0.8)
-  const affectedTotal = Math.round(K.K13 * affectedRatio)
-
-  const ambulatoryRatio = randRange(0.6, 0.9)
-  K.K7 = Math.round(affectedTotal * ambulatoryRatio)
-  K.K8 = affectedTotal - K.K7
-
-  const maxRescuersByMchs = Math.floor(K.K15 * 50)
-  const maxRescuersByRatio = Math.floor(K.K13 * 0.2)
-  const maxRescuers = Math.min(maxRescuersByMchs, maxRescuersByRatio)
-
-  const minRescuers = Math.max(1, Math.floor(maxRescuers * 0.3))
-  K.K14 = randInt(minRescuers, maxRescuers)
-
-  const solutionPerKm2 = randRange(5, 15)
-  K.K10 = Math.round(K.K3 * solutionPerKm2)
-
-  const techPerKm2 = randRange(0, 3)
-  K.K9 = Math.round(K.K3 * techPerKm2)
-
-  const forcesPerKm2 = randRange(2, 5)
-  const minForces = K.K9 * 2 + K.K3 * 2
-  K.K11 = Math.round(minForces + K.K3 * forcesPerKm2)
-
-  K.K5 = Math.round(K.K13 * randRange(0, 0.15))
-  // Вторичное облако: 0–25% от людей в зоне
-  K.K6 = Math.round(K.K13 * randRange(0, 0.25))
-
-  K.K4 = round(K.K1 * randRange(0.1, 0.5), 2)
-
-  const k12Base = K.K15 * 9
-  const k12Noise = randRange(-10, 5)
-  K.K12 = clamp(Math.round(k12Base + k12Noise), 5, 95)
-
-  K.K7 = clamp(K.K7, 0, K.K13)
-  K.K8 = clamp(K.K8, 0, K.K13 - K.K7)
-  K.K14 = clamp(K.K14, 0, K.K13)
-  K.K14 = clamp(K.K14, 0, Math.floor(K.K15 * 50))
-  K.K10 = Math.max(K.K10, Math.ceil(K.K3 * 5))
-  K.K11 = Math.max(K.K11, Math.ceil(K.K9 * 2))
-  K.K4 = Math.min(K.K4, K.K1)
-  K.K12 = clamp(K.K12, 0, 100)
-
-  ;['K7', 'K8', 'K9', 'K10', 'K11', 'K12', 'K13', 'K14'].forEach(
-    (k) => (K[k] = Math.round(K[k]))
+  // --- 3. Спасатели (K14 ≤ K15 × 50) ---
+  const maxRescuers = Math.floor(v.K15 * CONST.RESCUERS_PER_MCHS)
+  const maxRescuersByRatio = Math.floor(v.K13 * CONST.MAX_RESCUERS_RATIO)
+  const rescuerCeiling = Math.min(maxRescuers, maxRescuersByRatio)
+  v.K14 = randInt(
+    Math.floor(rescuerCeiling * 0.3),
+    rescuerCeiling
   )
 
-  const ordered = {}
-  STATE_NAMES.forEach((_, i) => {
-    const key = `K${i + 1}`
-    ordered[key] = K[key] ?? 0
-  })
-  return ordered
+  // --- 4. Растворы (K10 ≥ K3 × 5) ---
+  const minSolution = Math.ceil(v.K3 * CONST.SOLUTION_PER_KM2)
+  v.K10 = randInt(minSolution, Math.max(minSolution, minSolution * 8))
+
+  // --- 5. Техника (K9) ---
+  const maxTech = Math.max(1, Math.floor(v.K3 * 4))
+  v.K9 = randInt(0, maxTech)
+
+  // --- 6. Силы (K11 ≥ K9 × 2) ---
+  const minForces = Math.ceil(v.K9 * CONST.FORCES_PER_TECH + v.K3 * 2)
+  v.K11 = randInt(minForces, Math.max(minForces, minForces * 5))
+
+  // --- 7. Потери от облаков (K5, K6 ≤ K13) ---
+  v.K5 = randInt(0, Math.min(150, v.K13))
+  v.K6 = randInt(0, Math.min(250, v.K13))
+
+  // --- 8. Время подхода облака (K4 ≤ K1) ---
+  v.K4 = round(randRange(0.5, v.K1 * 0.7), 2)
+
+  // --- 9. Эффективность оповещения (K12) ---
+  const k12Base = v.K15 * 8
+  const k12Noise = randRange(-15, 10)
+  v.K12 = clamp(Math.round(k12Base + k12Noise), 5, 95)
+
+  // --- 10. R-параметры ---
+  v.R1 = round(randRange(0.2, 1.8), 2)
+  v.R2 = round(randRange(0.3, 1.8), 2)
+  v.R3 = round(randRange(0.1, 1.5), 2)
+  v.R4 = round(randRange(0.1, 0.9), 2)
+
+  return v
 }
 
-const R_RANGES = {
-  R1: [0.2, 1.5],
-  R2: [0.3, 1.5],
-  R3: [0.1, 1.2],
-  R4: [0.1, 0.9],
-}
+// ------------------------------------------------------------
+// Применить знаки для каждой переменной:
+// некоторые коэффициенты в полиномах идут со знаком «−»,
+// но само значение по смыслу должно быть положительным.
+// Здесь мы оставляем значения положительными — знак
+// применяется уже в COEFFICIENTS.
+// ------------------------------------------------------------
+export function randomAllValues() {
+  const names = getAllCoefficientNames()
+  const base = generateConsistentValues()
 
-export function randomControls() {
   const result = {}
-  CONTROL_NAMES.forEach((_, i) => {
-    const key = `R${i + 1}`
-    const [min, max] = R_RANGES[key]
-    result[key] = round(randRange(min, max), 2)
+  names.forEach((key) => {
+    result[key] = base[key] ?? 0
   })
   return result
 }
 
-export function randomAll() {
-  return {
-    K0: randomK0(),
-    controls: randomControls(),
-  }
+// ------------------------------------------------------------
+// Случайное значение для одного коэффициента — с учётом
+// диапазона по смыслу (без связей с другими)
+// ------------------------------------------------------------
+const K_MAX = {
+  K1: 48, K2: 120, K3: 30, K4: 12, K5: 200,
+  K6: 300, K7: 500, K8: 200, K9: 100, K10: 500,
+  K11: 300, K12: 100, K13: 5000, K14: 500, K15: 10,
 }
+const R_MAX = { R1: 2, R2: 2, R3: 2, R4: 1 }
 
-export function validateConstraints(K) {
-  const errors = []
-
-  if ((K.K7 ?? 0) + (K.K8 ?? 0) > (K.K13 ?? 0)) {
-    errors.push(
-      `K7 + K8 = ${(K.K7 ?? 0) + (K.K8 ?? 0)} > K13 = ${K.K13 ?? 0}. ` +
-        `Пострадавших не может быть больше, чем людей в зоне.`
-    )
-  }
-
-  const maxRescuers = (K.K15 ?? 0) * 50
-  if ((K.K14 ?? 0) > maxRescuers) {
-    errors.push(
-      `K14 = ${K.K14} > K15 × 50 = ${maxRescuers}. ` +
-        `Спасателей не может быть больше, чем позволяет развитость МЧС.`
-    )
-  }
-
-  if ((K.K4 ?? 0) > (K.K1 ?? 0)) {
-    errors.push(
-      `K4 = ${K.K4} > K1 = ${K.K1}. ` +
-        `Облако не может дойти позже, чем испарится источник.`
-    )
-  }
-
-  const minSolution = Math.ceil((K.K3 ?? 0) * 5)
-  if ((K.K10 ?? 0) < minSolution) {
-    errors.push(
-      `K10 = ${K.K10} < K3 × 5 = ${minSolution}. ` +
-        `Растворов не хватит на обеззараживание площади.`
-    )
-  }
-
-  const minForces = Math.ceil((K.K9 ?? 0) * 2)
-  if ((K.K11 ?? 0) < minForces) {
-    errors.push(
-      `K11 = ${K.K11} < K9 × 2 = ${minForces}. ` +
-        `Сил не хватит на ликвидацию техники.`
-    )
-  }
-
-  if ((K.K12 ?? 0) < 0 || (K.K12 ?? 0) > 100) {
-    errors.push(`K12 = ${K.K12} — должен быть в диапазоне 0…100.`)
-  }
-
-  if ((K.K1 ?? 0) <= 0) errors.push(`K1 должно быть > 0.`)
-  if ((K.K2 ?? 0) <= 0) errors.push(`K2 должно быть > 0.`)
-
-  return errors
+export function randomOneValue(key) {
+  const isR = key.startsWith('R')
+  const max = (isR ? R_MAX[key] : K_MAX[key]) ?? 10
+  return round(randRange(0, max), 2)
 }

@@ -64,10 +64,8 @@ function ResultCard({ item }) {
         <span className="result-label">{label}</span>
       </div>
 
-      {/* Что это */}
       <div className="result-description">{description}</div>
 
-      {/* Что стало */}
       <div className="result-change">{changeText}</div>
 
       <div className={`result-verdict verdict-${verdict}`}>
@@ -76,6 +74,7 @@ function ResultCard({ item }) {
       </div>
 
       <div className="result-explanation">{explanation}</div>
+
     </div>
   )
 }

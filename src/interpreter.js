@@ -1,4 +1,13 @@
-import { STATE_NAMES } from './solver'
+// ============================================================
+// Интерпретатор результатов.
+// Модель: K_i(t) — полином степени n_i.
+// Вердикт считается по ИЗМЕНЕНИЮ delta = K(t) − K(0):
+//   delta > 0 → смотрим MEANING.plus
+//   delta < 0 → смотрим MEANING.minus
+// ============================================================
+
+import { STATE_NAMES } from './polynomials'
+import { K_MAX } from './normalization'
 
 export const UNITS = {
   K1: 'ч',
@@ -20,12 +29,12 @@ export const UNITS = {
 
 const MEANING = {
   K1: {
-    plus:  { label: 'Испарение продолжается', good: false },
-    minus: { label: 'Испарение завершилось', good: true  },
+    plus:  { label: 'Испарение идёт дольше нормы',          good: false },
+    minus: { label: 'Испарение заканчивается быстрее нормы', good: true  },
   },
   K2: {
-    plus:  { label: 'Ликвидация продолжается', good: false },
-    minus: { label: 'Ликвидация завершилась', good: true  },
+    plus:  { label: 'Ликвидация затягивается дольше нормы', good: false },
+    minus: { label: 'Ликвидация идёт быстрее нормы',        good: true  },
   },
   K3: {
     plus:  { label: 'Зона заражения больше нормы', good: false },
@@ -64,8 +73,8 @@ const MEANING = {
     minus: { label: 'Сил и средств нужно меньше нормы', good: true  },
   },
   K12: {
-    plus:  { label: 'Оповещение усилилось', good: true  },
-    minus: { label: 'Оповещение ослабло',   good: false },
+    plus:  { label: 'Оповещение усилилось относительно нормы', good: true  },
+    minus: { label: 'Оповещение ослабло относительно нормы',   good: false },
   },
   K13: {
     plus:  { label: 'Людей в зоне поражения больше нормы', good: false },
@@ -76,14 +85,17 @@ const MEANING = {
     minus: { label: 'Спасателей меньше нормы', good: false },
   },
   K15: {
-    plus:  { label: 'Система МЧС развилась',    good: true  },
-    minus: { label: 'Система МЧС деградировала', good: false },
+    plus:  { label: 'Система МЧС развилась относительно нормы',    good: true  },
+    minus: { label: 'Система МЧС деградировала относительно нормы', good: false },
   },
 }
 
-const SMALL  = 5
-const MEDIUM = 30
-const LARGE  = 100
+// ------------------------------------------------------------
+// Пороги по |delta|
+// ------------------------------------------------------------
+const SMALL  = 0.5
+const MEDIUM = 5
+const LARGE  = 20
 
 export function interpretResults(startK, endK) {
   return STATE_NAMES.map((label, i) => {
@@ -99,68 +111,61 @@ function interpretOne(key, label, start, end) {
   const meaning = MEANING[key]
   const delta = end - start
 
-  const deviation = end
-  const absDeviation = Math.abs(deviation)
+  const absDelta = Math.abs(delta)
 
-  let deviationLevel
-  if (absDeviation < SMALL) deviationLevel = 'none'
-  else if (absDeviation < MEDIUM) deviationLevel = 'small'
-  else if (absDeviation < LARGE) deviationLevel = 'medium'
-  else if (absDeviation < LARGE * 3) deviationLevel = 'large'
-  else deviationLevel = 'huge'
+  let changeLevel
+  if (absDelta < SMALL) changeLevel = 'none'
+  else if (absDelta < MEDIUM) changeLevel = 'small'
+  else if (absDelta < LARGE) changeLevel = 'medium'
+  else changeLevel = 'large'
 
   const startFmt = formatNumber(start)
   const endFmt = formatNumber(end)
-  const deltaFmt = formatNumber(delta, true)
 
-  const changeText = `${startFmt} → ${endFmt} ${unit}  (${deltaFmt})`
+  const changeText = `K(0) = ${startFmt} --> K(t) = ${endFmt} ${unit}`
 
-  let verdict       
-  let verdictText    
-  let verdictIcon    
-
-  if (deviationLevel === 'none') {
+  let verdict, verdictText, verdictIcon
+  if (changeLevel === 'none') {
     verdict = 'neutral'
     verdictText = 'Без существенных изменений'
     verdictIcon = '≈'
   } else {
-    const side = deviation > 0 ? meaning.plus : meaning.minus
+    const side = delta > 0 ? meaning.plus : meaning.minus
     if (side.good) {
       verdict = 'good'
-      verdictText = 'Удовлетворительно'
+      verdictText = 'Улучшилось'
       verdictIcon = '✓'
     } else {
       verdict = 'bad'
-      verdictText = 'Не удовлетворительно'
+      verdictText = 'Ухудшилось'
       verdictIcon = '✕'
     }
   }
 
   let explanation
-
-  if (deviationLevel === 'none') {
-    explanation = 'Значение осталось в пределах нормы.'
+  if (changeLevel === 'none') {
+    explanation = 'Значение практически не изменилось.'
   } else {
-    const side = deviation > 0 ? meaning.plus : meaning.minus
+    const side = delta > 0 ? meaning.plus : meaning.minus
     explanation = side.label + '.'
   }
+
+  // Нормированное значение — % от максимума
+  const max = K_MAX[key] ?? 1
+  const percent = max > 0 ? (end / max) * 100 : 0
 
   return {
     key,
     label: label.replace(/^K\d+ — /, ''),
     unit,
-
     start,
     end,
     delta,
-    deviation,
-
+    percent,
     changeText,
-
     verdict,
     verdictText,
     verdictIcon,
-
     explanation,
   }
 }
