@@ -1,13 +1,11 @@
-import React, { useMemo, useState } from 'react'
+import React, { useState } from 'react'
 import './App.css'
-import DivergingBar from './components/DivergingBar'
-import {
-  evaluateAll,
-  getAllCoefficientNames,
-} from './polynomials'
+import { getAllCoefficientNames } from './polynomials'
 import { randomAllValues } from './random'
 import CoefficientInput from './components/CoefficientInput'
-import ResultsTable from './components/ResultsTable'
+import SourceSystem from './components/SourceSystem'
+import TimeChart from './components/TimeChart'
+import RadarChart from './components/RadarChart'
 
 const DEFAULT_VALUES = (() => {
   const init = {}
@@ -34,27 +32,11 @@ export default function App() {
   const [values, setValues] = useState(DEFAULT_VALUES)
   const [tEnd, setTEnd] = useState(10)
 
-  const startK = useMemo(
-    () => evaluateAll(0, values, tEnd),
-    [values, tEnd]
-  )
-
-  // Конечное состояние (t = tEnd) — при τ = 1
-  const endK = useMemo(
-    () => evaluateAll(tEnd, values, tEnd),
-    [tEnd, values]
-  )
-
-  // Изменение одного коэффициента
   const updateValue = (key, val) =>
     setValues((p) => ({ ...p, [key]: val }))
 
-  // Случайно все коэффициенты
-  const randomAll = () => {
-    setValues(randomAllValues())
-  }
+  const randomAll = () => setValues(randomAllValues())
 
-  // Сброс
   const reset = () => {
     setValues(DEFAULT_VALUES)
     setTEnd(10)
@@ -64,7 +46,7 @@ export default function App() {
     <div className="app">
       <header>
         <h1>
-          Калькулятор оценки ЧС
+          Калькулятор полиномиальной модели оценки ЧС
           нефтеперерабатывающего завода
         </h1>
       </header>
@@ -96,8 +78,9 @@ export default function App() {
         </aside>
 
         <main className="main">
-          <DivergingBar startK={startK} endK={endK} />
-          <ResultsTable startK={startK} endK={endK} />
+          <SourceSystem />
+          <TimeChart values={values} tEnd={tEnd} points={30} />
+          <RadarChart values={values} tEnd={tEnd} />
         </main>
       </div>
     </div>

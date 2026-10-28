@@ -137,8 +137,15 @@ header h1 {
   border-color: #dc2626;
 }
 
+/* Мини-кнопки для тулбара графика */
+.btn-mini {
+  padding: 4px 10px;
+  font-size: 11px;
+  border-radius: 6px;
+}
+
 /* ============================================================
-   Поля ввода (общие — для параметров расчёта)
+   Поля ввода
    ============================================================ */
 .field {
   display: flex;
@@ -165,7 +172,7 @@ header h1 {
 }
 
 /* ============================================================
-   Панель «Уравнения и коэффициенты»
+   Панель «Уравнения модели»
    ============================================================ */
 .equations {
   display: flex;
@@ -214,317 +221,7 @@ header h1 {
   white-space: nowrap;
 }
 
-/* Формула полинома */
-.equation-formula {
-  font-family: monospace;
-  font-size: 13px;
-  color: #334155;
-  padding: 8px 5px;
-  background: #f8fafc;
-  border-radius: 6px;
-  margin-bottom: 2px;
-  line-height: 1.8;
-  word-break: break-word;
-}
-
-.formula-term {
-  white-space: nowrap;
-}
-
-.formula-op {
-  color: #64748b;
-  margin: 0 2px;
-}
-
-.formula-var {
-  font-weight: 600;
-  color: #0f172a;
-}
-
-.formula-power {
-  color: #94a3b8;
-}
-
-/* Сетка полей ввода коэффициентов */
-.equation-fields {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 8px;
-}
-
-.coef-field {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 6px 8px;
-  background: #f8fafc;
-  border-radius: 6px;
-  border: 1px solid #e2e8f0;
-}
-
-.coef-label {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  font-size: 11px;
-  font-family: monospace;
-}
-
-.coef-power {
-  color: #94a3b8;
-  font-size: 10px;
-}
-
-.coef-name {
-  font-weight: 700;
-  color: #334155;
-}
-
-.coef-sign {
-  color: #64748b;
-  margin-left: auto;
-  font-weight: 700;
-}
-
-.coef-input-wrap {
-  display: flex;
-  gap: 4px;
-}
-
-.coef-input-wrap input {
-  flex: 1;
-  min-width: 0;
-  padding: 4px 6px;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
-  font-size: 12px;
-  font-family: monospace;
-  outline: none;
-  background: #fff;
-  transition: border-color 0.15s;
-}
-
-.coef-input-wrap input:focus {
-  border-color: #3b82f6;
-}
-
-.coef-random {
-  padding: 4px 8px;
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.15s;
-}
-
-.coef-random:hover {
-  background: #eff6ff;
-  border-color: #3b82f6;
-}
-
-.coef-result {
-  font-size: 10px;
-  color: #94a3b8;
-  font-family: monospace;
-  text-align: right;
-}
-
-/* ============================================================
-   Сводная плашка результатов
-   ============================================================ */
-.summary-bar {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-  padding: 12px 16px;
-  background: #f8fafc;
-  border-radius: 10px;
-  border: 1px solid #e2e8f0;
-}
-
-.summary-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-  justify-content: center;
-}
-
-.summary-icon {
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.summary-count {
-  font-size: 22px;
-  font-weight: 700;
-  font-family: monospace;
-}
-
-.summary-label {
-  font-size: 12px;
-  color: #64748b;
-}
-
-.summary-good .summary-icon,
-.summary-good .summary-count {
-  color: #16a34a;
-}
-
-.summary-bad .summary-icon,
-.summary-bad .summary-count {
-  color: #dc2626;
-}
-
-.summary-neutral .summary-icon,
-.summary-neutral .summary-count {
-  color: #64748b;
-}
-
-/* ============================================================
-   Сетка карточек результата
-   ============================================================ */
-.results {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
-
-@media (max-width: 900px) {
-  .results {
-    grid-template-columns: 1fr;
-  }
-}
-
-.result-card {
-  border-radius: 10px;
-  padding: 14px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  transition: transform 0.1s, box-shadow 0.1s;
-}
-
-.result-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
-.result-good {
-  border-left: 4px solid #22c55e;
-}
-
-.result-bad {
-  border-left: 4px solid #ef4444;
-}
-
-.result-neutral {
-  border-left: 4px solid #94a3b8;
-}
-
-/* Заголовок карточки */
-.result-header {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.result-key {
-  font-weight: 700;
-  font-size: 14px;
-  color: #0f172a;
-  background: #f1f5f9;
-  padding: 2px 8px;
-  border-radius: 6px;
-  font-family: monospace;
-  flex-shrink: 0;
-}
-
-.result-label {
-  font-size: 12px;
-  color: #64748b;
-  line-height: 1.3;
-}
-
-/* Что это */
-.result-description {
-  font-size: 12px;
-  color: #5c6a7d;
-  line-height: 1.45;
-  padding: 6px 10px;
-  background: #f8fafc;
-  border-radius: 6px;
-  border-left: 3px solid #cbd5e1;
-}
-
-/* Изменение */
-.result-change {
-  font-family: monospace;
-  font-size: 15px;
-  font-weight: 600;
-  color: #0f172a;
-  padding: 6px 0;
-  border-bottom: 1px dashed #e2e8f0;
-}
-
-/* Вердикт */
-.result-verdict {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.verdict-good {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.verdict-bad {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.verdict-neutral {
-  background: #f1f5f9;
-  color: #475569;
-}
-
-.verdict-icon {
-  font-size: 18px;
-  flex-shrink: 0;
-}
-
-.verdict-text {
-  flex: 1;
-}
-
-/* Пояснение */
-.result-explanation {
-  font-size: 13px;
-  color: #475569;
-  line-height: 1.4;
-}
-
-/* Предупреждение внутри карточки */
-.result-warning {
-  padding: 8px 10px;
-  background: #fef3c7;
-  color: #92400e;
-  border-radius: 6px;
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-/* ============================================================
-   Формула уравнения с полями ввода
-   ============================================================ */
+/* Формула с полями ввода */
 .equation-formula {
   display: flex;
   flex-wrap: wrap;
@@ -537,6 +234,19 @@ header h1 {
   background: #f8fafc;
   border-radius: 6px;
   line-height: 1.9;
+}
+
+.eq-term {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.eq-op {
+  color: #64748b;
+  font-weight: 600;
+  font-size: 15px;
+  white-space: pre;
 }
 
 .eq-input {
@@ -563,156 +273,23 @@ header h1 {
   background: #eff6ff;
 }
 
-.eq-input:hover {
-  background: #f1f5f9;
-}
-
 .eq-power {
   color: #232324;
   font-size: 14px;
   white-space: pre;
 }
 
-/* Нормированное значение — % от максимума */
-.result-normalized {
-  font-size: 11px;
-  color: #94a3b8;
-  text-align: right;
+.eq-fn {
   font-family: monospace;
-  margin-top: -4px;
-}
-
-/* ============================================================
-   Диверджент-бар
-   ============================================================ */
-.diverging-chart {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 8px;
-}
-
-.dbar-row {
-  display: grid;
-  grid-template-columns: 48px 1fr 64px;
-  align-items: center;
-  gap: 10px;
-  padding: 3px 0;
-}
-
-.dbar-label {
-  font-family: monospace;
-  font-weight: 700;
-  font-size: 13px;
-  color: #0f172a;
-  text-align: right;
-}
-
-.dbar-value {
-  font-family: monospace;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
-  text-align: left;
+  color: #596370;
   white-space: nowrap;
 }
 
-.dbar-value-good    { color: #16a34a; }
-.dbar-value-bad     { color: #dc2626; }
-.dbar-value-neutral { color: #64748b; }
-
-/* Дорожка */
-.dbar-track {
-  position: relative;
-  height: 20px;
-  background: #f8fafc;
-  border-radius: 4px;
-  border: 1px solid #e2e8f0;
-}
-
-.dbar-center-line {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: #cbd5e1;
-  z-index: 1;
-  transform: translateX(-0.5px);
-}
-
-.dbar-fill {
-  position: absolute;
-  top: 3px;
-  bottom: 3px;
-  border-radius: 3px;
-  transition: all 0.2s ease;
-  z-index: 2;
-}
-
-.dbar-fill-good    { background: #22c55e; }
-.dbar-fill-bad     { background: #ef4444; }
-.dbar-fill-neutral { background: #94a3b8; }
-
-/* Ось */
-.dbar-axis-row {
-  margin-bottom: 4px;
-}
-
-.dbar-track-axis {
-  background: transparent;
-  border: none;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0;
-  height: auto;
-}
-
-.dbar-axis-label {
-  font-family: monospace;
-  font-size: 10px;
-  color: #94a3b8;
-  font-weight: 600;
-}
-
-.dbar-axis-min {
-  text-align: left;
-  flex: 1;
-}
-
-.dbar-axis-center {
-  text-align: center;
-  color: #64748b;
-  flex: 1;
-}
-
-.dbar-axis-max {
-  text-align: right;
-  flex: 1;
-}
-
-/* Подсветка слов в panel-hint */
-.hint-good    { color: #16a34a; font-weight: 600; }
-.hint-bad     { color: #dc2626; font-weight: 600; }
-.hint-neutral { color: #64748b; font-weight: 600; }
-
-.source-system {
-  margin-bottom: 16px;
-  padding: 12px 14px;
-  background: #f8fafc;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-}
-
-.source-title {
-  margin: 0 0 10px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #334155;
-  padding-bottom: 8px;
-  border-bottom: 1px dashed #cbd5e1;
-}
-
+/* ============================================================
+   Исходная система уравнений
+   ============================================================ */
 .source-equations {
   display: flex;
   flex-direction: column;
@@ -721,7 +298,7 @@ header h1 {
   font-size: 11.5px;
   color: #334155;
   line-height: 1.5;
-  max-height: 280px;
+  max-height: 500px;
   overflow-y: auto;
   padding-right: 6px;
 }
@@ -730,7 +307,7 @@ header h1 {
   display: flex;
   gap: 8px;
   padding: 4px 6px;
-  background: #fff;
+  background: #f8fafc;
   border-radius: 4px;
   border-left: 2px solid #94a3b8;
 }
@@ -746,4 +323,46 @@ header h1 {
   flex: 1;
   word-break: break-word;
   color: #475569;
+}
+
+/* ============================================================
+   Исходная система — строки K с расшифровкой
+   ============================================================ */
+.source-equations {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 600px;
+  overflow-y: auto;
+  padding-right: 6px;
+  font-family: monospace;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.source-row {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 10px;
+  padding: 6px 10px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border-left: 3px solid #94a3b8;
+  align-items: baseline;
+}
+
+.source-title {
+  color: #0f172a;
+  font-weight: 700;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    sans-serif;
+  font-size: 11px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.source-formula {
+  color: #334155;
+  word-break: break-word;
+  font-weight: 500;
 }
