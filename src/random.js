@@ -1,17 +1,22 @@
 // ============================================================
-// Генерация случайных значений коэффициентов K1…K15 и R1…R4.
-// Значения согласованы между собой — соблюдаются физические
-// связи (пострадавшие ≤ людей, растворы ≥ площади и т.д.).
-// K13 уменьшен до общего масштаба (≤ 500) — чтобы на графике
-// он не «съедал» весь диапазон.
+// Генерация случайных ЦЕЛЫХ, физически осмысленных
+// коэффициентов f_j и R_k.
+//
+// f_j(x) = c₀ + c₁x + c₂x² + c₃x³:
+//   • c₀ = 0            — f(0) = 0
+//   • c₁ ∈ {1}          — наклон 1: f(1) = 1 (нейтрально)
+//     либо {1, 1, 2}    — иногда усиление
+//   • c₂ = 0            — без нелинейности (стабильно)
+//   • c₃ = 0
+//
+// В сочетании с геометрическим средним в solver.js это даёт
+// f_j(1) ≈ 1, произведение ≈ 1 независимо от числа множителей.
+// Система выходит на насыщение, но не «взрывается».
 // ============================================================
 
 import { getAllCoefficientNames } from './polynomials'
-
-function randRange(min, max) {
-  if (max <= min) return min
-  return min + Math.random() * (max - min)
-}
+import { R_MAX } from './normalization'
+import { FN_COUNT } from './functions'
 
 function randInt(min, max) {
   min = Math.ceil(min)
@@ -20,128 +25,79 @@ function randInt(min, max) {
   return Math.floor(min + Math.random() * (max - min + 1))
 }
 
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value))
+function weightedChoice(options) {
+  const total = options.reduce((s, [, w]) => s + w, 0)
+  let r = Math.random() * total
+  for (const [value, w] of options) {
+    r -= w
+    if (r <= 0) return value
+  }
+  return options[options.length - 1][0]
 }
 
-function round(value, digits = 2) {
-  const p = Math.pow(10, digits)
-  return Math.round(value * p) / p
+// Коэффициенты одной f_j: f(x) = x — доминирующий вариант,
+// иногда f(x) = 2x или f(x) = x + x²
+function randomFnCoefficients() {
+  const variant = weightedChoice([
+    ['linear', 60],   // f(x) = x
+    ['double', 25],   // f(x) = 2x
+    ['quad',   15],   // f(x) = x + x²
+  ])
+  switch (variant) {
+    case 'linear': return [0, 1, 0, 0]
+    case 'double': return [0, 2, 0, 0]
+    case 'quad':   return [0, 1, 1, 0]
+    default:       return [0, 1, 0, 0]
+  }
 }
 
-// ------------------------------------------------------------
-// Модельные константы для связей
-// ------------------------------------------------------------
-const CONST = {
-  RESCUERS_PER_MCHS: 50,
-  SOLUTION_PER_KM2: 5,
-  FORCES_PER_TECH: 2,
-  MAX_AFFECTED_RATIO: 0.8,
-  MAX_RESCUERS_RATIO: 0.2,
+function randomRValue(key) {
+  const max = R_MAX[key] ?? 1
+  switch (key) {
+    case 'R1':
+    case 'R2':
+      return randInt(1, max)
+    case 'R3':
+      return randInt(0, max)
+    case 'R4':
+      return randInt(0, Math.min(1, max))
+    default:
+      return randInt(0, max)
+  }
 }
 
-// ------------------------------------------------------------
-// Главная функция — генерирует все коэффициенты согласованно
-// ------------------------------------------------------------
-function generateConsistentValues() {
-  const v = {}
-
-  // --- 1. Независимые «якорные» величины ---
-  // K13 теперь 50…500 (было 50…3000) — общий масштаб с остальными
-  v.K13 = randInt(50, 500)
-  v.K3  = round(randRange(1, 15), 2)     // было 1…25 — сузили
-  v.K15 = round(randRange(1, 9), 2)
-  v.K1  = round(randRange(5, 45), 2)
-  v.K2  = round(randRange(Math.max(6, v.K1), 100), 2)
-
-  // --- 2. Пострадавшие (K7 + K8 ≤ K13) ---
-  const maxAffected = Math.floor(v.K13 * CONST.MAX_AFFECTED_RATIO)
-  const affectedTotal = randInt(0, maxAffected)
-  const ambulatoryRatio = randRange(0.5, 0.9)
-  v.K7 = Math.round(affectedTotal * ambulatoryRatio)
-  v.K8 = affectedTotal - v.K7
-
-  // --- 3. Спасатели (K14 ≤ K15 × 50) ---
-  const maxRescuers = Math.floor(v.K15 * CONST.RESCUERS_PER_MCHS)
-  const maxRescuersByRatio = Math.floor(v.K13 * CONST.MAX_RESCUERS_RATIO)
-  const rescuerCeiling = Math.min(maxRescuers, maxRescuersByRatio)
-  v.K14 = randInt(
-    Math.floor(rescuerCeiling * 0.3),
-    rescuerCeiling
-  )
-
-  // --- 4. Растворы (K10 ≥ K3 × 5) ---
-  const minSolution = Math.ceil(v.K3 * CONST.SOLUTION_PER_KM2)
-  v.K10 = randInt(minSolution, Math.max(minSolution, minSolution * 8))
-
-  // --- 5. Техника (K9) ---
-  const maxTech = Math.max(1, Math.floor(v.K3 * 4))
-  v.K9 = randInt(0, maxTech)
-
-  // --- 6. Силы (K11 ≥ K9 × 2) ---
-  const minForces = Math.ceil(v.K9 * CONST.FORCES_PER_TECH + v.K3 * 2)
-  v.K11 = randInt(minForces, Math.max(minForces, minForces * 5))
-
-  // --- 7. Потери от облаков (K5, K6 ≤ K13) ---
-  v.K5 = randInt(0, Math.min(100, v.K13))
-  v.K6 = randInt(0, Math.min(150, v.K13))
-
-  // --- 8. Время подхода облака (K4 ≤ K1) ---
-  v.K4 = round(randRange(0.5, v.K1 * 0.7), 2)
-
-  // --- 9. Эффективность оповещения (K12) ---
-  const k12Base = v.K15 * 8
-  const k12Noise = randRange(-15, 10)
-  v.K12 = clamp(Math.round(k12Base + k12Noise), 5, 95)
-
-  // --- 10. R-параметры ---
-  v.R1 = round(randRange(0.2, 1.8), 2)
-  v.R2 = round(randRange(0.3, 1.8), 2)
-  v.R3 = round(randRange(0.1, 1.5), 2)
-  v.R4 = round(randRange(0.1, 0.9), 2)
-
-  return v
-}
-
-// ------------------------------------------------------------
-// Собрать результат по именам коэффициентов
-// ------------------------------------------------------------
 export function randomAllValues() {
   const names = getAllCoefficientNames()
-  const base = generateConsistentValues()
-
   const result = {}
-  names.forEach((key) => {
-    result[key] = base[key] ?? 0
-  })
+
+  for (let i = 1; i <= FN_COUNT; i++) {
+    const [c0, c1, c2, c3] = randomFnCoefficients()
+    result[`f${i}_c0`] = c0
+    result[`f${i}_c1`] = c1
+    result[`f${i}_c2`] = c2
+    result[`f${i}_c3`] = c3
+  }
+
+  for (const name of names) {
+    if (name.startsWith('R')) {
+      result[name] = randomRValue(name)
+    }
+  }
+
   return result
 }
 
-// ------------------------------------------------------------
-// Случайное значение для одного коэффициента (без связей)
-// ------------------------------------------------------------
-const K_MAX = {
-  K1: 48,
-  K2: 120,
-  K3: 30,
-  K4: 12,
-  K5: 200,
-  K6: 300,
-  K7: 500,
-  K8: 200,
-  K9: 100,
-  K10: 500,
-  K11: 300,
-  K12: 100,
-  K13: 500,   // ← было 5000, теперь 500
-  K14: 500,
-  K15: 10,
-}
-
-const R_MAX = { R1: 2, R2: 2, R3: 2, R4: 1 }
-
 export function randomOneValue(key) {
-  const isR = key.startsWith('R')
-  const max = (isR ? R_MAX[key] : K_MAX[key]) ?? 10
-  return round(randRange(0, max), 2)
+  if (key.startsWith('R')) {
+    return randomRValue(key)
+  }
+  const m = key.match(/^f(\d+)_c(\d+)$/)
+  if (m) {
+    const deg = parseInt(m[2], 10)
+    if (deg === 0) return 0
+    if (deg === 1) return weightedChoice([[1, 70], [2, 30]])
+    if (deg === 2) return weightedChoice([[0, 80], [1, 20]])
+    if (deg === 3) return 0
+  }
+  return 0
 }

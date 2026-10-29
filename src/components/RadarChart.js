@@ -12,22 +12,22 @@ import {
 import { STATE_NAMES, evaluateAll } from '../polynomials'
 import { K_MAX } from '../normalization'
 
-export default function RadarChart({ values, tEnd }) {
-  // Начальное состояние (t = 0)
-  const startState = evaluateAll(0, values, tEnd)
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v))
+}
 
-  // Итоговое состояние (t = tEnd)
+export default function RadarChart({ values, tEnd }) {
+  const startState = evaluateAll(0, values, tEnd)
   const endState = evaluateAll(tEnd, values, tEnd)
 
-  // Данные для лепестковой диаграммы
   const data = STATE_NAMES.map((label, i) => {
     const key = `K${i + 1}`
     const max = K_MAX[key] || 1
     return {
       key,
       label: key,
-      start: (startState[key] / max) * 100,
-      end: (endState[key] / max) * 100,
+      start: clamp((startState[key] / max) * 100, 0, 100),
+      end: clamp((endState[key] / max) * 100, 0, 100),
       fullLabel: label,
     }
   })
@@ -41,7 +41,7 @@ export default function RadarChart({ values, tEnd }) {
           <PolarGrid stroke="#e2e8f0" />
           <PolarAngleAxis dataKey="label" tick={{ fontSize: 11 }} />
           <PolarRadiusAxis
-            domain={[-100, 100]}
+            domain={[0, 100]}
             angle={90}
             tickFormatter={(v) => `${v}%`}
             tick={{ fontSize: 10 }}
@@ -55,7 +55,7 @@ export default function RadarChart({ values, tEnd }) {
           <Legend />
 
           <Radar
-            name={`K(t)`}
+            name="K(t)"
             dataKey="end"
             stroke="#3b82f6"
             fill="#3b82f6"
@@ -63,7 +63,6 @@ export default function RadarChart({ values, tEnd }) {
             strokeWidth={2}
           />
 
-          {/* Начальное состояние — красная граница без заливки */}
           <Radar
             name="K(0)"
             dataKey="start"

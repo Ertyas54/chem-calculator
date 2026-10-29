@@ -1,9 +1,6 @@
 // ============================================================
 // Интерпретатор результатов.
-// Модель: K_i(t) — полином степени n_i.
-// Вердикт считается по ИЗМЕНЕНИЮ delta = K(t) − K(0):
-//   delta > 0 → смотрим MEANING.plus
-//   delta < 0 → смотрим MEANING.minus
+// K_i(t) ∈ [0, K_MAX_i]. Вердикт — относительно нормы K_MAX/2.
 // ============================================================
 
 import { STATE_NAMES } from './polynomials'
@@ -90,12 +87,9 @@ const MEANING = {
   },
 }
 
-// ------------------------------------------------------------
-// Пороги по |delta|
-// ------------------------------------------------------------
-const SMALL  = 0.5
-const MEDIUM = 5
-const LARGE  = 20
+const SMALL  = 0.05
+const MEDIUM = 0.25
+const LARGE  = 0.60
 
 export function interpretResults(startK, endK) {
   return STATE_NAMES.map((label, i) => {
@@ -109,49 +103,52 @@ export function interpretResults(startK, endK) {
 function interpretOne(key, label, start, end) {
   const unit = UNITS[key] ?? ''
   const meaning = MEANING[key]
-  const delta = end - start
 
+  const max = K_MAX[key] ?? 1
+  const norm = max / 2
+
+  const delta = end - norm
   const absDelta = Math.abs(delta)
+  const rel = norm > 0 ? absDelta / norm : 0
 
   let changeLevel
-  if (absDelta < SMALL) changeLevel = 'none'
-  else if (absDelta < MEDIUM) changeLevel = 'small'
-  else if (absDelta < LARGE) changeLevel = 'medium'
+  if (rel < SMALL) changeLevel = 'none'
+  else if (rel < MEDIUM) changeLevel = 'small'
+  else if (rel < LARGE) changeLevel = 'medium'
   else changeLevel = 'large'
 
   const startFmt = formatNumber(start)
   const endFmt = formatNumber(end)
+  const normFmt = formatNumber(norm)
 
-  const changeText = `K(0) = ${startFmt} --> K(t) = ${endFmt} ${unit}`
+  const changeText = `K(0) = ${startFmt} → K(t) = ${endFmt} ${unit} (норма ≈ ${normFmt})`
 
   let verdict, verdictText, verdictIcon
   if (changeLevel === 'none') {
     verdict = 'neutral'
-    verdictText = 'Без существенных изменений'
+    verdictText = 'В пределах нормы'
     verdictIcon = '≈'
   } else {
     const side = delta > 0 ? meaning.plus : meaning.minus
     if (side.good) {
       verdict = 'good'
-      verdictText = 'Улучшилось'
+      verdictText = 'Благоприятно'
       verdictIcon = '✓'
     } else {
       verdict = 'bad'
-      verdictText = 'Ухудшилось'
+      verdictText = 'Неблагоприятно'
       verdictIcon = '✕'
     }
   }
 
   let explanation
   if (changeLevel === 'none') {
-    explanation = 'Значение практически не изменилось.'
+    explanation = 'Значение близко к норме.'
   } else {
     const side = delta > 0 ? meaning.plus : meaning.minus
     explanation = side.label + '.'
   }
 
-  // Нормированное значение — % от максимума
-  const max = K_MAX[key] ?? 1
   const percent = max > 0 ? (end / max) * 100 : 0
 
   return {
@@ -170,11 +167,9 @@ function interpretOne(key, label, start, end) {
   }
 }
 
-function formatNumber(v, signed = false) {
+function formatNumber(v) {
   if (!Number.isFinite(v)) return '—'
   const abs = Math.abs(v)
   const digits = abs >= 100 ? 1 : abs >= 1 ? 2 : 3
-  const str = v.toFixed(digits)
-  if (signed && v > 0) return `+${str}`
-  return str
+  return v.toFixed(digits)
 }

@@ -2,29 +2,29 @@ import React, { useState } from 'react'
 import './App.css'
 import { getAllCoefficientNames } from './polynomials'
 import { randomAllValues } from './random'
-import CoefficientInput from './components/CoefficientInput'
+import { FN_COUNT } from './functions'
+import FnEditor from './components/FnEditor'
+import REditor from './components/REditor'
 import SourceSystem from './components/SourceSystem'
 import TimeChart from './components/TimeChart'
 import RadarChart from './components/RadarChart'
 
 const DEFAULT_VALUES = (() => {
   const init = {}
-  getAllCoefficientNames().forEach((key) => {
-    init[key] = 0
+  getAllCoefficientNames().forEach((k) => {
+    init[k] = 0
   })
-  init.K1 = 10
-  init.K2 = 10
-  init.K3 = 5
-  init.K7 = 20
-  init.K8 = 5
-  init.K10 = 100
-  init.K13 = 100
-  init.K14 = 10
-  init.K15 = 5
-  init.R1 = 1.0
-  init.R2 = 1.0
-  init.R3 = 0.8
-  init.R4 = 0.5
+  // f_j(x) = x по умолчанию
+  for (let i = 1; i <= FN_COUNT; i++) {
+    init[`f${i}_c0`] = 0
+    init[`f${i}_c1`] = 1
+    init[`f${i}_c2`] = 0
+    init[`f${i}_c3`] = 0
+  }
+  init.R1 = 1
+  init.R2 = 1
+  init.R3 = 1
+  init.R4 = 0
   return init
 })()
 
@@ -67,14 +67,18 @@ export default function App() {
                 }
               />
             </div>
+            <div className="panel-actions" style={{ marginTop: 12 }}>
+              <button className="btn btn-primary" onClick={randomAll}>
+                Заполнить случайно
+              </button>
+              <button className="btn btn-danger" onClick={reset}>
+                Сбросить
+              </button>
+            </div>
           </div>
 
-          <CoefficientInput
-            values={values}
-            onChange={updateValue}
-            onRandomAll={randomAll}
-            onReset={reset}
-          />
+          <REditor values={values} onChange={updateValue} />
+          <FnEditor values={values} onChange={updateValue} />
         </aside>
 
         <main className="main">
