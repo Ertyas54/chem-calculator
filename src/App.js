@@ -1,13 +1,14 @@
 import React, { useState } from 'react'
 import './App.css'
 import { getAllCoefficientNames } from './polynomials'
-import { randomAllValues } from './random'
+import { randomAllValues, randomFnValues } from './random'
 import { FN_COUNT } from './functions'
 import FnEditor from './components/FnEditor'
 import REditor from './components/REditor'
 import SourceSystem from './components/SourceSystem'
 import TimeChart from './components/TimeChart'
 import RadarChart from './components/RadarChart'
+import ResultsTable from './components/ResultsTable'
 
 const DEFAULT_VALUES = (() => {
   const init = {}
@@ -37,6 +38,9 @@ export default function App() {
 
   const randomAll = () => setValues(randomAllValues())
 
+  const randomFn = (fn) =>
+    setValues((p) => ({ ...p, ...randomFnValues(fn) }))
+
   const reset = () => {
     setValues(DEFAULT_VALUES)
     setTEnd(10)
@@ -49,6 +53,15 @@ export default function App() {
           Калькулятор полиномиальной модели оценки ЧС
           нефтеперерабатывающего завода
         </h1>
+
+        <div className="header-actions">
+          <button className="btn btn-primary header-btn" onClick={randomAll}>
+            🎲 Рандом всех значений
+          </button>
+          <button className="btn header-btn" onClick={reset}>
+            Сбросить всё
+          </button>
+        </div>
       </header>
 
       <div className="layout">
@@ -68,8 +81,8 @@ export default function App() {
               />
             </div>
             <div className="panel-actions" style={{ marginTop: 12 }}>
-              <button className="btn btn-primary" onClick={randomAll}>
-                Заполнить случайно
+              <button className="btn" onClick={randomAll}>
+                🎲 Рандом
               </button>
               <button className="btn btn-danger" onClick={reset}>
                 Сбросить
@@ -78,13 +91,14 @@ export default function App() {
           </div>
 
           <REditor values={values} onChange={updateValue} />
-          <FnEditor values={values} onChange={updateValue} />
+          <FnEditor values={values} onChange={updateValue} onRandomFn={randomFn} />
         </aside>
 
         <main className="main">
           <SourceSystem />
           <TimeChart values={values} tEnd={tEnd} points={30} />
           <RadarChart values={values} tEnd={tEnd} />
+          <ResultsTable values={values} tEnd={tEnd} />
         </main>
       </div>
     </div>

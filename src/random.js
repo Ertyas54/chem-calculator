@@ -35,20 +35,18 @@ function weightedChoice(options) {
   return options[options.length - 1][0]
 }
 
-// Коэффициенты одной f_j: f(x) = x — доминирующий вариант,
-// иногда f(x) = 2x или f(x) = x + x²
+// Коэффициенты одной f_j. Варианты подобраны так, чтобы кнопка
+// «Рандом» заметно меняла картинку: f_j(1) от 0.5 до 3.
 function randomFnCoefficients() {
-  const variant = weightedChoice([
-    ['linear', 60],   // f(x) = x
-    ['double', 25],   // f(x) = 2x
-    ['quad',   15],   // f(x) = x + x²
+  return weightedChoice([
+    [[0, 1, 0, 0], 22],     // f = x
+    [[0, 2, 0, 0], 18],     // f = 2x
+    [[0, 0.5, 0, 0], 15],   // f = 0.5x
+    [[0, 1, 1, 0], 15],     // f = x + x²
+    [[0, 1.5, 0, 0], 12],   // f = 1.5x
+    [[0, 1, 0, 1], 10],     // f = x + x³
+    [[0, 0.5, 0.5, 0], 8],  // f = 0.5x + 0.5x²
   ])
-  switch (variant) {
-    case 'linear': return [0, 1, 0, 0]
-    case 'double': return [0, 2, 0, 0]
-    case 'quad':   return [0, 1, 1, 0]
-    default:       return [0, 1, 0, 0]
-  }
 }
 
 function randomRValue(key) {
@@ -85,6 +83,17 @@ export function randomAllValues() {
   }
 
   return result
+}
+
+// Случайные коэффициенты для одной f_j (кнопка 🎲)
+export function randomFnValues(fn) {
+  const [c0, c1, c2, c3] = randomFnCoefficients()
+  return {
+    [`f${fn}_c0`]: c0,
+    [`f${fn}_c1`]: c1,
+    [`f${fn}_c2`]: c2,
+    [`f${fn}_c3`]: c3,
+  }
 }
 
 export function randomOneValue(key) {
