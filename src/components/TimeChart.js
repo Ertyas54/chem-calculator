@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useRef, useState, useEffect } from 'react'
 import {
   LineChart,
   Line,
@@ -7,26 +7,30 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Customized,
 } from 'recharts'
 import { STATE_NAMES, evaluateAll } from '../polynomials'
 import { K_MAX } from '../normalization'
 
+const PALETTE = [
+  '#2563eb', '#dc2626', '#059669', '#d97706', '#7c3aed',
+  '#0891b2', '#db2777', '#65a30d', '#ea580c', '#4f46e5',
+  '#0f766e', '#b91c1c', '#a16207', '#9333ea', '#0369a1',
+]
+
+const CHART_HEIGHT = 900
 const MIN_GAP = 14
-const LABEL_OFFSET_X = 8
+const MARGIN = { top: 20, right: 50, bottom: 40, left: 30 }
+const LABEL_LIFT = 15
 
 function spreadLabels(items, minGap, top, bottom) {
   const sorted = [...items].sort((a, b) => a.y - b.y)
   const ys = sorted.map((d) => d.y)
-
   for (let i = 1; i < ys.length; i++) {
     if (ys[i] - ys[i - 1] < minGap) ys[i] = ys[i - 1] + minGap
   }
   const overflow = ys[ys.length - 1] - bottom
   if (overflow > 0) {
-    for (let i = ys.length - 1; i >= 0; i--) {
-      ys[i] -= overflow
-    }
+    for (let i = ys.length - 1; i >= 0; i--) ys[i] -= overflow
     for (let i = ys.length - 2; i >= 0; i--) {
       if (ys[i + 1] - ys[i] < minGap) ys[i] = ys[i + 1] - minGap
     }
@@ -35,11 +39,24 @@ function spreadLabels(items, minGap, top, bottom) {
   if (under > 0) {
     for (let i = 0; i < ys.length; i++) ys[i] += under
   }
-
   return sorted.map((d, i) => ({ ...d, labelY: ys[i] }))
 }
 
 export default function TimeChart({ values, tEnd, points = 60 }) {
+  const wrapRef = useRef(null)
+  const [width, setWidth] = useState(0)
+
+  useEffect(() => {
+    if (!wrapRef.current) return undefined
+    const el = wrapRef.current
+    const ro = new ResizeObserver((entries) => {
+      for (const e of entries) setWidth(e.contentRect.width)
+    })
+    ro.observe(el)
+    setWidth(el.getBoundingClientRect().width)
+    return () => ro.disconnect()
+  }, [])
+
   const data = useMemo(() => {
     const arr = []
     for (let i = 0; i <= points; i++) {
@@ -57,155 +74,150 @@ export default function TimeChart({ values, tEnd, points = 60 }) {
     return arr
   }, [values, tEnd, points])
 
+  const yMax = useMemo(() => {
+    let m = 0
+    data.forEach((row) => {
+      STATE_NAMES.forEach((_, j) => {
+        const v = row[`K${j + 1}`] ?? 0
+        if (v > m) m = v
+      })
+    })
+    return Math.max(0.02, Math.min(1, m * 1.08))
+  }, [data])
+
+  const plotRight = Math.max(MARGIN.left + 50, width - MARGIN.right)
+  const plotTop = MARGIN.top + 6
+  const plotBottom = CHART_HEIGHT - MARGIN.bottom - 6
+  const plotH = plotBottom - plotTop
+
+  const endLabels = useMemo(() => {
+    if (width === 0) return []
+    const last = data[data.length - 1]
+    const items = STATE_NAMES.map((_, i) => {
+      const key = `K${i + 1}`
+      const v = last[key] ?? 0
+      const y = plotTop + (1 - v / yMax) * plotH
+      return { key, color: PALETTE[i % PALETTE.length], y }
+    })
+    return spreadLabels(items, MIN_GAP, plotTop, plotBottom)
+  }, [data, yMax, width, plotTop, plotBottom, plotH])
+
+  const Y_TICKS = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+
   return (
     <div className="panel">
       <h3>Изменение переменных от времени</h3>
 
-      <ResponsiveContainer width="100%" height={720}>
-        <LineChart
-          data={data}
-          margin={{ top: 20, right: 90, bottom: 40, left: 20 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis
-            dataKey="tau"
-            type="number"
-            domain={[0, 1]}
-            ticks={[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]}
-            label={{
-              value: 'Нормированное время τ = t / tMax',
-              position: 'insideBottom',
-              offset: -22,
-            }}
-            tickFormatter={(v) => v.toFixed(1)}
-            stroke="#64748b"
-          />
-          <YAxis
-            domain={[0, 1]}
-            ticks={[
-              0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4,
-              0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8,
-              0.85, 0.9, 0.95, 1,
-            ]}
-            label={{
-              value: 'K / K_max',
-              angle: -90,
-              position: 'insideLeft',
-            }}
-            stroke="#64748b"
-            tickFormatter={(v) => v.toFixed(2)}
-            tick={{ fontSize: 10 }}
-          />
-          <Tooltip
-            shared={true}
-            formatter={(v, name) => {
-              const max = K_MAX[name] || 1
-              const real = v * max
-              return [
-                `${real.toFixed(2)} (${(v * 100).toFixed(0)}%)`,
-                name,
-              ]
-            }}
-            labelFormatter={(tau, payload) => {
-              const t = payload?.[0]?.payload?.t
-              const tauStr = Number(tau).toFixed(2)
-              const tStr = t != null ? Number(t).toFixed(2) : '—'
-              return `τ = ${tauStr} (t = ${tStr})`
-            }}
-            itemSorter={(item) => -item.value}
-            contentStyle={{
-              background: '#fff',
-              border: '1px solid #cbd5e1',
-              borderRadius: 6,
-              fontSize: 12,
-              padding: 8,
-              overflowY: 'auto',
-              fontFamily: 'monospace',
-            }}
-            cursor={{ stroke: '#1f2937', strokeWidth: 1 }}
-          />
+      <div ref={wrapRef} style={{ position: 'relative', width: '100%' }}>
+        <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+          <LineChart data={data} margin={MARGIN}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis
+              dataKey="tau"
+              type="number"
+              domain={[0, 1]}
+              ticks={[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]}
+              label={{
+                value: 'Время t', position: 'insideBottom', offset: -22,
+              }}
+              tickFormatter={(v) => v.toFixed(1)}
+              stroke="#64748b"
+            />
 
-          {STATE_NAMES.map((_, i) => {
-            const key = `K${i + 1}`
+            <YAxis
+              domain={[0, yMax]}
+              ticks={Y_TICKS.map((v) => v * yMax)}
+              tickFormatter={(real) => (real / yMax).toFixed(1)}
+              label={{ value: 'Значение показателей K', angle: -90, position: 'insideLeft' }}
+              stroke="#64748b"
+              tick={{ fontSize: 16 }}
+            />
+
+            <Tooltip
+              shared={true}
+              formatter={(v, name) => {
+                const max = K_MAX[name] || 1
+                return [
+                  `${(v * max).toFixed(3)} (${(v * 100).toFixed(1)}%)`,
+                  name,
+                ]
+              }}
+              labelFormatter={(tau, payload) => {
+                const t = payload?.[0]?.payload?.t
+                return `τ = ${Number(tau).toFixed(2)} (t = ${
+                  t != null ? Number(t).toFixed(2) : '—'
+                })`
+              }}
+              itemSorter={(item) => -item.value}
+              contentStyle={{
+                background: '#fff',
+                border: '1px solid #cbd5e1',
+                borderRadius: 6,
+                fontSize: 12,
+                padding: 8,
+                maxHeight: 380,
+                overflowY: 'auto',
+                fontFamily: 'monospace',
+              }}
+              cursor={{ stroke: '#1f2937', strokeWidth: 1 }}
+            />
+
+            {STATE_NAMES.map((_, i) => {
+              const key = `K${i + 1}`
+              const color = PALETTE[i % PALETTE.length]
+              return (
+                <Line
+                  key={key}
+                  type="monotone"
+                  dataKey={key}
+                  name={key}
+                  stroke={color}
+                  dot={false}
+                  strokeWidth={1.8}
+                  isAnimationActive={false}
+                  activeDot={{
+                    r: 4,
+                    fill: color,
+                    stroke: '#fff',
+                    strokeWidth: 2,
+                  }}
+                />
+              )
+            })}
+          </LineChart>
+        </ResponsiveContainer>
+
+        <svg
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: CHART_HEIGHT,
+            pointerEvents: 'none',
+            overflow: 'visible',
+          }}
+        >
+          {endLabels.map(({ key, color, labelY }) => {
+            const ty = labelY - LABEL_LIFT
+            const labelX = plotRight + 14
             return (
-              <Line
+              <text
                 key={key}
-                type="monotone"
-                dataKey={key}
-                name={key}
-                stroke="#1f2937"
-                dot={false}
-                strokeWidth={1}
-                isAnimationActive={false}
-                activeDot={{
-                  r: 4,
-                  fill: '#1f2937',
-                  stroke: '#fff',
-                  strokeWidth: 2,
-                }}
-              />
+                x={labelX}
+                y={ty}
+                dy={4}
+                fontSize={12}
+                fontFamily="monospace"
+                fontWeight={700}
+                fill={color}
+              >
+                {key}
+              </text>
             )
           })}
-
-          <LabelOverlay data={data} />
-        </LineChart>
-      </ResponsiveContainer>
+        </svg>
+      </div>
     </div>
-  )
-}
-
-function LabelOverlay({ data }) {
-  return (
-    <Customized
-      component={(props) => {
-        const { xAxisMap, yAxisMap, offset } = props
-        if (!xAxisMap || !yAxisMap || !offset) return null
-
-        const xAxis = Object.values(xAxisMap)[0]
-        const yAxis = Object.values(yAxisMap)[0]
-        if (!xAxis || !yAxis || !xAxis.scale || !yAxis.scale) return null
-
-        const last = data[data.length - 1]
-        const xPos = xAxis.scale(last.tau)
-        const rightX = offset.left + offset.width
-
-        const items = STATE_NAMES.map((_, i) => {
-          const key = `K${i + 1}`
-          const v = last[key] ?? 0
-          return { key, y: yAxis.scale(v) }
-        })
-
-        const top = offset.top + 4
-        const bottom = offset.top + offset.height - 4
-        const spread = spreadLabels(items, MIN_GAP, top, bottom)
-
-        return (
-          <g>
-            {spread.map(({ key, y, labelY }) => (
-              <g key={key}>
-                <polyline
-                  points={`${xPos},${y} ${rightX},${labelY} ${rightX + LABEL_OFFSET_X - 4},${labelY}`}
-                  fill="none"
-                  stroke="#94a3b8"
-                  strokeWidth={0.8}
-                  strokeDasharray="2 2"
-                />
-                <circle cx={xPos} cy={y} r={2} fill="#1f2937" />
-                <text
-                  x={rightX + LABEL_OFFSET_X}
-                  y={labelY}
-                  dy={4}
-                  fontSize={11}
-                  fontFamily="monospace"
-                  fill="#1f2937"
-                >
-                  {key}
-                </text>
-              </g>
-            ))}
-          </g>
-        )
-      }}
-    />
   )
 }

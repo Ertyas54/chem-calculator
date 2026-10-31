@@ -1,11 +1,25 @@
 import React, { useState } from 'react'
 import { EQUATIONS } from '../equations'
 import { STATE_NAMES } from '../polynomials'
-import { K_MAX } from '../normalization'
 
-const POW = ['', '', '²', '³']
+const SUB = {
+  0: '₀', 1: '₁', 2: '₂', 3: '₃', 4: '₄',
+  5: '₅', 6: '₆', 7: '₇', 8: '₈', 9: '₉',
+}
 
-// Какая переменная K является аргументом каждой f_j
+function subNum(n) {
+  return String(n)
+    .split('')
+    .map((d) => SUB[d] ?? d)
+    .join('')
+}
+
+function kLabel(k) {
+  const m = /^K(\d+)$/.exec(k)
+  if (!m) return k
+  return `K${subNum(m[1])}`
+}
+
 const FN_ARG = (() => {
   const map = {}
   Object.values(EQUATIONS).forEach((termsList) => {
@@ -20,36 +34,33 @@ const FN_ARG = (() => {
 
 function TermView({ term }) {
   if (term.fn != null) {
-    return <span className="eq-fn">{`f${term.fn}(${term.arg})`}</span>
+    return (
+      <span className="eq-fn">
+        {`f${subNum(term.fn)}(${kLabel(term.arg)})`}
+      </span>
+    )
   }
   if (term.r) {
-    return <span className="eq-fn">{term.r}</span>
+    const m = /^R(\d+)$/.exec(term.r)
+    return (
+      <span className="eq-fn">
+        {m ? `R${subNum(m[1])}` : term.r}
+      </span>
+    )
   }
   return null
 }
 
-// ------------------------------------------------------------
-// f_j записывается через свой K, а не через абстрактный x:
-//   f₁₂(K₁₅) = c₀ + c₁·(K₁₅/20) + c₂·(K₁₅/20)² + c₃·(K₁₅/20)³
-// Скобка (K/K_max) — это и есть нормировка в [0, 1].
-// ------------------------------------------------------------
-function FnCoefficients({ fn, values, onChange, onRandomFn }) {
+function FnCoefficients({ fn, values, onChange }) {
   const arg = FN_ARG[fn]
-  const max = K_MAX[arg] ?? 1
-  const xLabel = `(${arg}/${max})`
+  const argLabel = kLabel(arg)
 
   return (
     <div className="fn-row">
-      <button
-        type="button"
-        className="fn-dice"
-        title={`Случайные коэффициенты f${fn}`}
-        onClick={() => onRandomFn(fn)}
-      >
-        🎲
-      </button>
 
-      <span className="eq-fn fn-head">{`f${fn}(${arg}) =`}</span>
+      <span className="eq-fn fn-head">
+        {`f${subNum(fn)}(${argLabel}) =`}
+      </span>
 
       <span className="fn-coeffs">
         {[0, 1, 2, 3].map((deg) => {
@@ -64,15 +75,18 @@ function FnCoefficients({ fn, values, onChange, onRandomFn }) {
               <input
                 className="eq-input"
                 value={val}
-                title={`${name} — коэффициент при (${arg}/${max})${POW[deg]}`}
+                title={`${name}`}
                 onChange={(e) =>
                   onChange(name, parseFloat(e.target.value) || 0)
                 }
               />
-              {deg > 0 && (
+              {deg === 1 && (
+                <span className="fn-deg">·{argLabel}</span>
+              )}
+              {deg > 1 && (
                 <span className="fn-deg">
-                  ·{xLabel}
-                  {POW[deg]}
+                  ·{argLabel}
+                  <sup>{deg}</sup>
                 </span>
               )}
             </span>
@@ -94,10 +108,9 @@ function EquationCard({ kKey, termsList, values, onChange, onRandomFn }) {
   })
   fns.sort((a, b) => a - b)
 
-  const title = STATE_NAMES.find((s) => s.startsWith(kKey + ' '))?.replace(
-    /^K\d+ — /,
-    ''
-  )
+  const title = STATE_NAMES.find((s) =>
+    s.startsWith(kKey + ' ')
+  )?.replace(/^K\d+ — /, '')
 
   return (
     <div className="equation">
@@ -106,7 +119,7 @@ function EquationCard({ kKey, termsList, values, onChange, onRandomFn }) {
         style={{ cursor: 'pointer' }}
         onClick={() => setOpen((v) => !v)}
       >
-        <span className="equation-key">{kKey}(t)</span>
+        <span className="equation-key">{kLabel(kKey)}(t)</span>
         <span className="equation-label">{title}</span>
         <span className="equation-degree">
           {open ? '▾' : '▸'} {fns.length} f
@@ -152,13 +165,10 @@ function EquationCard({ kKey, termsList, values, onChange, onRandomFn }) {
 export default function FnEditor({ values, onChange, onRandomFn }) {
   return (
     <div className="panel">
-      <h3>Функции f<sub>j</sub>(K) = c₀ + c₁·(K/K_max) + c₂·(K/K_max)² + c₃·(K/K_max)³</h3>
-      <p className="panel-hint">
-        Каждая f<sub>j</sub> записана через свой коэффициент K из уравнения.
-        Скобка (K/K<sub>max</sub>) переводит его в безразмерный вид 0…1 —
-        именно она подставляется в полином. 🎲 — случайные коэффициенты только
-        этой функции. Разверните уравнение, чтобы задать коэффициенты.
-      </p>
+      <h3>
+        Функции f<sub>j</sub>(K)
+      </h3>
+
       <div className="equations">
         {Object.entries(EQUATIONS).map(([kKey, termsList]) => (
           <EquationCard

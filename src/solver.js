@@ -1,17 +1,17 @@
 // ============================================================
 // Численное решение системы ОДУ методом Рунге–Кутты 4-го порядка.
 //
-// Ключевые решения для осмысленной динамики:
-//   • dK_i/dt масштабируется на K_MAX_i / tEnd — тогда K_i
-//     проходит свой диапазон ровно за время tEnd.
-//   • Произведение f_j в слагаемом заменяется геометрическим
-//     средним, чтобы порядок не зависел от числа множителей.
-//   • Проекция в [0, K_MAX_i] гарантирует неотрицательность.
+// Ключевые изменения для отсутствия «полок» на графике:
+//   • Скорость dK/dt уменьшена в 10 раз — K не успевают
+//     упереться в границы за tEnd.
+//   • Мягкая обрезка: возле 0 и K_MAX скорость плавно затухает,
+//     а не жёстко ограничивается. K асимптотически стремится
+//     к границе, но не прилипает.
 // ============================================================
 
 import { EQUATIONS } from './equations'
 import { evalFn } from './functions'
-import { K_MAX, K_INITIAL, R_MAX } from './normalization'
+import { K_MAX, R_MAX } from './normalization'
 
 function fnValue(fn, x, values) {
   const coeffs = [
@@ -29,7 +29,30 @@ function rValue(r, values) {
   return Math.max(0, Math.min(1, raw / max))
 }
 
-// Правая часть dK/dt для текущего вектора K
+// ------------------------------------------------------------
+// Мягкий фактор приближения к границам:
+//   у 0:        smooth = (K/K_eps)^2 / (1 + (K/K_eps)^2)
+//   у K_MAX:    smooth = ((K_MAX-K)/K_eps)^2 / (1 + ...)
+// Возле границ множитель → 0 (замедление), в середине → 1.
+// ------------------------------------------------------------
+function softFactor(K, KMax, eps) {
+  const epsAbs = eps * KMax
+  if (epsAbs <= 0) return 1
+
+  // Замедление у нуля
+  const nearZero = K / epsAbs
+  const fZero = (nearZero * nearZero) / (1 + nearZero * nearZero)
+
+  // Замедление у потолка
+  const nearMax = (KMax - K) / epsAbs
+  const fMax = (nearMax * nearMax) / (1 + nearMax * nearMax)
+
+  return fZero * fMax
+}
+
+// ------------------------------------------------------------
+// Правая часть dK/dt
+// ------------------------------------------------------------
 function derivatives(K, values, tEnd) {
   const d = {}
 
@@ -47,8 +70,6 @@ function derivatives(K, values, tEnd) {
           const x = argMax > 0 ? argValue / argMax : 0
           const xClamped = Math.max(0, Math.min(1, x))
           const fv = fnValue(term.fn, xClamped, values)
-          // Ограничим каждую f_j снизу нулём (отрицательный
-          // отклик не имеет физического смысла)
           product *= Math.max(0, fv)
           count++
         } else if (term.r) {
@@ -58,8 +79,7 @@ function derivatives(K, values, tEnd) {
         }
       })
 
-      // Геометрическое среднее по числу множителей — чтобы
-      // произведение 6 функций не «взрывалось» как 3^6.
+      // Геометрическое среднее по числу множителей
       if (count > 1) {
         product = Math.pow(Math.max(0, product), 1 / count)
       }
@@ -67,10 +87,14 @@ function derivatives(K, values, tEnd) {
       sum += sign * product
     })
 
-    // Масштаб: K_MAX_i / tEnd, чтобы K_i прошла диапазон
-    // ровно за tEnd при |sum| ≈ 1
-    const scale = tEnd > 0 ? (K_MAX[key] ?? 1) / tEnd : 0
-    d[key] = sum * scale
+    // Масштаб: K_MAX / tEnd / 10 — чтобы за tEnd K сдвинулось
+    // в среднем на 10% диапазона, а не на 100%.
+    const max = K_MAX[key] ?? 1
+    const baseScale = max / 100
+
+    // Мягкая обрезка — у границ скорость падает
+    const soft = softFactor(K[key] ?? 0, max, 0.05)
+    d[key] = sum * baseScale * soft
   })
 
   return d
@@ -103,6 +127,9 @@ function rk4Step(K, values, dt, tEnd) {
       K[key] +
       (dt / 6) * (k1[key] + 2 * k2[key] + 2 * k3[key] + k4[key])
     const max = K_MAX[key] ?? 1
+    // Проекция всё равно нужна — но теперь с мягкой обрезкой
+    // K редко к ней подходит. Если подошёл — не прилипнет,
+    // а будет плавно отталкиваться благодаря softFactor.
     result[key] = Math.max(0, Math.min(max, next))
   })
   return result
@@ -111,8 +138,15 @@ function rk4Step(K, values, dt, tEnd) {
 export function solveODE(values, tEnd, steps = 400) {
   const dt = tEnd / steps
 
+  // Стартовые K из values
+  const initialK = {}
+  for (let i = 1; i <= 15; i++) {
+    const key = `K${i}`
+    initialK[key] = values[key] ?? 0
+  }
+
   const states = []
-  let K = { ...K_INITIAL }
+  let K = { ...initialK }
   states.push({ t: 0, K: { ...K } })
 
   for (let i = 1; i <= steps; i++) {

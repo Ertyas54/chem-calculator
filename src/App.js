@@ -1,73 +1,93 @@
 import React, { useState } from 'react'
 import './App.css'
 import { getAllCoefficientNames } from './polynomials'
-import { randomAllValues, randomFnValues } from './random'
-import { FN_COUNT } from './functions'
+import {
+  randomAllValues,
+  randomFnValues,
+  randomK,
+  randomR,
+  randomOneValue,
+} from './random'
 import FnEditor from './components/FnEditor'
+import InitialValues from './components/InitialValues'
 import REditor from './components/REditor'
 import SourceSystem from './components/SourceSystem'
 import TimeChart from './components/TimeChart'
 import RadarChart from './components/RadarChart'
-import ResultsTable from './components/ResultsTable'
 
-const DEFAULT_VALUES = (() => {
+const DEFAULT_K = {
+  K1: 58, K2: 200, K3: 38, K4: 4, K5: 340,
+  K6: 520, K7: 250, K8: 110, K9: 160, K10: 280,
+  K11: 280, K12: 38, K13: 380, K14: 330, K15: 4,
+}
+
+const DEFAULT_R = { R1: 1, R2: 1, R3: 1, R4: 0.5 }
+
+const INITIAL_VALUES = (() => {
   const init = {}
-  getAllCoefficientNames().forEach((k) => {
-    init[k] = 0
+  getAllCoefficientNames().forEach((name) => {
+    if (name.startsWith('f')) {
+      const m = name.match(/^f(\d+)_c(\d+)$/)
+      if (m) {
+        const deg = parseInt(m[2], 10)
+        init[name] = deg === 0 ? 0 : deg === 1 ? 1 : 0.2
+      }
+    }
   })
-  // f_j(x) = x по умолчанию
-  for (let i = 1; i <= FN_COUNT; i++) {
-    init[`f${i}_c0`] = 0
-    init[`f${i}_c1`] = 1
-    init[`f${i}_c2`] = 0
-    init[`f${i}_c3`] = 0
-  }
-  init.R1 = 1
-  init.R2 = 1
-  init.R3 = 1
-  init.R4 = 0
+  Object.assign(init, DEFAULT_K, DEFAULT_R)
   return init
 })()
 
 export default function App() {
-  const [values, setValues] = useState(DEFAULT_VALUES)
+  const [values, setValues] = useState(INITIAL_VALUES)
   const [tEnd, setTEnd] = useState(10)
 
   const updateValue = (key, val) =>
     setValues((p) => ({ ...p, [key]: val }))
 
-  const randomAll = () => setValues(randomAllValues())
+  const randomizeAll = () => {
+    setValues((p) => ({ ...p, ...randomAllValues() }))
+  }
 
-  const randomFn = (fn) =>
+  const randomizeFn = (fn) => {
     setValues((p) => ({ ...p, ...randomFnValues(fn) }))
+  }
 
-  const reset = () => {
-    setValues(DEFAULT_VALUES)
-    setTEnd(10)
+  const randomizeOneValue = (key) => {
+    setValues((p) => ({ ...p, [key]: randomOneValue(key) }))
+  }
+
+  const randomizeR = () => {
+    setValues((p) => ({ ...p, ...randomR() }))
+  }
+
+  const randomizeK = () => {
+    setValues((p) => ({ ...p, ...randomK() }))
+  }
+
+  const resetK = () => {
+    setValues((p) => ({ ...p, ...DEFAULT_K }))
   }
 
   return (
     <div className="app">
       <header>
         <h1>
-          Калькулятор полиномиальной модели оценки ЧС
+          Калькулятор системы уравнений оценки ЧС
           нефтеперерабатывающего завода
         </h1>
-
-        <div className="header-actions">
-          <button className="btn btn-primary header-btn" onClick={randomAll}>
-            🎲 Рандом всех значений
-          </button>
-          <button className="btn header-btn" onClick={reset}>
-            Сбросить всё
+        <div style={{ textAlign: 'center' }}>
+          <button className="btn btn-primary" onClick={randomizeAll}>
+            Сгенерировать значения
           </button>
         </div>
       </header>
 
       <div className="layout">
         <aside className="sidebar">
+
           <div className="panel">
-            <h3>Параметры расчёта</h3>
+            <h3>Параметры интегрирования</h3>
             <div className="field">
               <label>Конечное время t</label>
               <input
@@ -80,25 +100,33 @@ export default function App() {
                 }
               />
             </div>
-            <div className="panel-actions" style={{ marginTop: 12 }}>
-              <button className="btn" onClick={randomAll}>
-                🎲 Рандом
-              </button>
-              <button className="btn btn-danger" onClick={reset}>
-                Сбросить
-              </button>
-            </div>
           </div>
 
-          <REditor values={values} onChange={updateValue} />
-          <FnEditor values={values} onChange={updateValue} onRandomFn={randomFn} />
+          <InitialValues
+            values={values}
+            onChange={updateValue}
+            onReset={resetK}
+            onRandom={randomizeK}
+          />
+
+          <REditor
+            values={values}
+            onChange={updateValue}
+            onRandom={randomizeR}
+          />
+
+          <FnEditor
+            values={values}
+            onChange={updateValue}
+            onRandomFn={randomizeFn}
+            onRandomOne={randomizeOneValue}
+          />
         </aside>
 
         <main className="main">
           <SourceSystem />
-          <TimeChart values={values} tEnd={tEnd} points={30} />
+          <TimeChart values={values} tEnd={tEnd} points={60} />
           <RadarChart values={values} tEnd={tEnd} />
-          <ResultsTable values={values} tEnd={tEnd} />
         </main>
       </div>
     </div>
