@@ -7,7 +7,9 @@ import {
   randomK,
   randomR,
   randomOneValue,
+  randomConditions,
 } from './random'
+import { makeDefaultConditions } from './normalization'
 import FnEditor from './components/FnEditor'
 import InitialValues from './components/InitialValues'
 import REditor from './components/REditor'
@@ -16,12 +18,15 @@ import TimeChart from './components/TimeChart'
 import RadarChart from './components/RadarChart'
 
 const DEFAULT_K = {
-  K1: 58, K2: 200, K3: 38, K4: 4, K5: 340,
-  K6: 520, K7: 250, K8: 110, K9: 160, K10: 280,
-  K11: 280, K12: 38, K13: 380, K14: 330, K15: 4,
+  K1: 0.58, K2: 0.80, K3: 0.76, K4: 0.22, K5: 0.85,
+  K6: 0.87, K7: 0.25, K8: 0.28, K9: 0.80, K10: 0.28,
+  K11: 0.47, K12: 0.19, K13: 0.38, K14: 0.33, K15: 0.20,
 }
 
-const DEFAULT_R = { R1: 1, R2: 1, R3: 1, R4: 0.5 }
+//const DEFAULT_R = { R1: 1, R2: 1, R3: 1, R4: 0.5 }
+const DEFAULT_R = { R1: 0.1, R2: 0.1, R3: 0.1, R4: 0.05 }
+
+const K_KEYS = Array.from({ length: 15 }, (_, i) => `K${i + 1}`)
 
 const INITIAL_VALUES = (() => {
   const init = {}
@@ -41,12 +46,24 @@ const INITIAL_VALUES = (() => {
 export default function App() {
   const [values, setValues] = useState(INITIAL_VALUES)
   const [tEnd, setTEnd] = useState(10)
+  const [conditions, setConditions] = useState(makeDefaultConditions)
 
   const updateValue = (key, val) =>
     setValues((p) => ({ ...p, [key]: val }))
 
+  //const randomizeAll = () => {
+  //  const all = randomAllValues()          // K, R, f — одним куском
+  //  const newK = {}
+  //  K_KEYS.forEach((k) => { newK[k] = all[k] })
+  //  setValues((p) => ({ ...p, ...all }))
+  //  setConditions(randomConditions(newK))  // красная линия — от этих же K
+  //}
+
   const randomizeAll = () => {
-    setValues((p) => ({ ...p, ...randomAllValues() }))
+    const all = randomAllValues()
+    const merged = { ...values, ...all }
+    setValues(merged)
+    setConditions(randomConditions(merged, tEnd))
   }
 
   const randomizeFn = (fn) => {
@@ -126,7 +143,12 @@ export default function App() {
         <main className="main">
           <SourceSystem />
           <TimeChart values={values} tEnd={tEnd} points={60} />
-          <RadarChart values={values} tEnd={tEnd} />
+          <RadarChart
+            values={values}
+            tEnd={tEnd}
+            conditions={conditions}
+            onConditionsChange={setConditions}
+          />
         </main>
       </div>
     </div>

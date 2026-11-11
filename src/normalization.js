@@ -1,16 +1,19 @@
 // ============================================================
 // Нормировка, максимумы.
-// K_MAX увеличены, чтобы линии не прилипали к верхней
-// границе нормировки (y = 1).
+// K хранится в нормализованной шкале [0, 1]:
+//   K_MAX = 1, K_MIN = 0 → normalize/denormalize тождественны.
+// R по-прежнему в исходной шкале (1…10).
 // ============================================================
 
+// K уже нормирован → максимум = 1, минимум = 0.
 export const K_MAX = {
-  K1: 72, K2: 240, K3: 45, K4: 18, K5: 400,
-  K6: 600, K7: 1000, K8: 400, K9: 200, K10: 1000,
-  K11: 600, K12: 200, K13: 1000, K14: 1000, K15: 20,
+  K1: 1, K2: 1, K3: 1, K4: 1, K5: 1,
+  K6: 1, K7: 1, K8: 1, K9: 1, K10: 1,
+  K11: 1, K12: 1, K13: 1, K14: 1, K15: 1,
 }
 
-export const R_MAX = { R1: 10, R2: 10, R3: 10, R4: 10 }
+//export const R_MAX = { R1: 10, R2: 10, R3: 10, R4: 10 }
+export const R_MAX = { R1: 1, R2: 1, R3: 1, R4: 1 }
 
 export const K_MIN = {
   K1: 0, K2: 0, K3: 0, K4: 0, K5: 0, K6: 0,
@@ -19,6 +22,10 @@ export const K_MIN = {
 }
 
 export const R_MIN = { R1: 0, R2: 0, R3: 0, R4: 0 }
+
+// Норма в нормализованной шкале (K ∈ [0, 1]).
+// Используется интерпретатором и диаграммами.
+export const K_NORM = 0.5
 
 export function getMax(name) {
   if (name.startsWith('R')) return R_MAX[name] ?? 1
@@ -30,6 +37,8 @@ export function getMin(name) {
   return K_MIN[name] ?? 0
 }
 
+// K уже в [0, 1]: normalize('K*', v) === v
+// R нормируется в [0, 1] по R_MAX/R_MIN
 export function normalize(name, value) {
   const max = getMax(name)
   const min = getMin(name)
@@ -37,6 +46,8 @@ export function normalize(name, value) {
   return (value - min) / (max - min)
 }
 
+// K уже в [0, 1]: denormalize('K*', v) === v
+// R переводится из [0, 1] обратно в исходную шкалу
 export function denormalize(name, value) {
   const max = getMax(name)
   const min = getMin(name)
@@ -48,5 +59,11 @@ export function normalizeAll(values) {
   Object.entries(values).forEach(([name, value]) => {
     result[name] = normalize(name, value)
   })
+  return result
+}
+
+export function makeDefaultConditions() {
+  const result = {}
+  for (let i = 1; i <= 15; i++) result[`K${i}`] = K_NORM
   return result
 }

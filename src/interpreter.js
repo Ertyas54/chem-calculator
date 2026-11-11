@@ -1,10 +1,9 @@
 // ============================================================
 // Интерпретатор результатов.
-// K_i(t) ∈ [0, K_MAX_i]. Вердикт — относительно нормы K_MAX/2.
+// K_i(t) ∈ [0, 1]. Норма — 0.5.
 // ============================================================
 
 import { STATE_NAMES } from './polynomials'
-import { K_MAX } from './normalization'
 
 export const UNITS = {
   K1: 'ч',
@@ -91,6 +90,9 @@ const SMALL  = 0.05
 const MEDIUM = 0.25
 const LARGE  = 0.60
 
+// K ∈ [0, 1], норма = 0.5
+const NORM = 0.5
+
 export function interpretResults(startK, endK) {
   return STATE_NAMES.map((label, i) => {
     const key = `K${i + 1}`
@@ -104,12 +106,9 @@ function interpretOne(key, label, start, end) {
   const unit = UNITS[key] ?? ''
   const meaning = MEANING[key]
 
-  const max = K_MAX[key] ?? 1
-  const norm = max / 2
-
-  const delta = end - norm
+  const delta = end - NORM
   const absDelta = Math.abs(delta)
-  const rel = norm > 0 ? absDelta / norm : 0
+  const rel = absDelta / NORM
 
   let changeLevel
   if (rel < SMALL) changeLevel = 'none'
@@ -119,7 +118,7 @@ function interpretOne(key, label, start, end) {
 
   const startFmt = formatNumber(start)
   const endFmt = formatNumber(end)
-  const normFmt = formatNumber(norm)
+  const normFmt = formatNumber(NORM)
 
   const changeText = `K(0) = ${startFmt} → K(t) = ${endFmt} ${unit} (норма ≈ ${normFmt})`
 
@@ -149,7 +148,7 @@ function interpretOne(key, label, start, end) {
     explanation = side.label + '.'
   }
 
-  const percent = max > 0 ? (end / max) * 100 : 0
+  const percent = end * 100
 
   return {
     key,

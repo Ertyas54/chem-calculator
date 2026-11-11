@@ -13,7 +13,7 @@ export default function REditor({ values, onChange }) {
   return (
     <div className="panel">
       <div className="panel-header">
-        <h3>Параметры R</h3>
+        <h3>Возмущение R</h3>
       </div>
 
       <div className="compact-grid">
