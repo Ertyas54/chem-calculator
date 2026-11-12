@@ -1,10 +1,10 @@
 // ============================================================
-// Обёртка над решением ОДУ. Экспортирует STATE_NAMES и
-// evaluateAll(t, values, tMax), совместимые с UI-компонентами.
+// Обёртка над решением ОДУ.
+// Экспортирует STATE_NAMES и evaluateAll(t, values, tMax).
 // ============================================================
 
 import { solveODE, interpolateState } from './solver'
-import { FN_COUNT, FN_DEGREE } from './functions'
+import { FN_COUNT, FN_DEGREE, R_COUNT, R_DEGREE } from './functions'
 
 export const STATE_NAMES = [
   'K1 — Время испарения ХОВ',
@@ -24,12 +24,10 @@ export const STATE_NAMES = [
   'K15 — Развитость системы МЧС',
 ]
 
-// Кэш решений
 const cache = new Map()
 const CACHE_LIMIT = 30
 
 function cacheKey(values, tMax) {
-  // Стабильный ключ: сортируем ключи
   const keys = Object.keys(values).sort()
   const parts = keys.map((k) => `${k}=${values[k]}`)
   return `${tMax}|${parts.join('&')}`
@@ -49,9 +47,14 @@ export function evaluateAll(t, values, tMax = 10) {
   return interpolateState(states, t)
 }
 
-// Все имена переменных, которые задаёт пользователь
+// Все имена коэффициентов: R1_c0…R4_c3 + f1_c0…f55_c3
 export function getAllCoefficientNames() {
-  const names = ['R1', 'R2', 'R3', 'R4']
+  const names = []
+  for (let r = 1; r <= R_COUNT; r++) {
+    for (let d = 0; d <= R_DEGREE; d++) {
+      names.push(`R${r}_c${d}`)
+    }
+  }
   for (let i = 1; i <= FN_COUNT; i++) {
     for (let d = 0; d <= FN_DEGREE; d++) {
       names.push(`f${i}_c${d}`)

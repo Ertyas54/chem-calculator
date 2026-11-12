@@ -25,8 +25,7 @@ export default function InitialValues({
   return (
     <div className="panel">
       <div className="panel-header">
-        <h3>Начальные значения K(0)</h3>
-        <span className="panel-hint">от 0 до 1</span>
+        <h3>Начальные значения K(i)</h3>
       </div>
 
       <div className="compact-grid">

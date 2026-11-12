@@ -1,13 +1,14 @@
-import { R_MAX } from './normalization'
-import { FN_COUNT } from './functions'
-import { evaluateAll } from './polynomials'
+// ============================================================
+// Генерация случайных значений K(0), R-коэффициентов и f-коэффициентов.
+//
+// K(0) зависит от тренда:
+//   down (K1,K2,K3,K5,K6,K9) → 0.35…0.60 (стартуют выше)
+//   up   (K4,K7,K8,K10…K15)  → 0.05…0.30 (стартуют ниже)
+// R-коэффициенты ∈ [0, 0.6].
+// ============================================================
 
-function randInt(min, max) {
-  min = Math.ceil(min)
-  max = Math.floor(max)
-  if (max <= min) return min
-  return Math.floor(min + Math.random() * (max - min + 1))
-}
+import { FN_COUNT, R_COUNT, R_DEGREE } from './functions'
+import { evaluateAll } from './polynomials'
 
 function choice(arr) {
   return arr[Math.floor(Math.random() * arr.length)]
@@ -33,16 +34,12 @@ const K_TREND = {
   K15: 'up',
 }
 
-// K теперь в нормализованной шкале [0, 1], норма = 0.5.
-// "down" → стартуем выше нормы (0.55…0.90), чтобы было куда улучшаться;
-// "up"   → стартуем ниже нормы (0.10…0.45).
 function randomKValue(key) {
   const trend = K_TREND[key] ?? 'up'
   const ratio =
     trend === 'down'
-      ? 0.55 + Math.random() * 0.35
-      : 0.10 + Math.random() * 0.35
-  // округляем до сотых, чтобы ввод/вывод был предсказуемым
+      ? 0.35 + Math.random() * 0.25 // 0.35…0.60
+      : 0.05 + Math.random() * 0.25 // 0.05…0.30
   return Math.round(ratio * 100) / 100
 }
 
@@ -63,27 +60,6 @@ function randomFnCoefficients() {
   ]
 }
 
-//function randomRValue(key) {
-//  const max = R_MAX[key] ?? 1
-//  switch (key) {
-//    case 'R1':
-//    case 'R2':
-//      return randInt(1, max)
-//    case 'R3':
-//      return randInt(0, max)
-//    case 'R4':
-//      return randInt(0, Math.min(1, max))
-//    default:
-//      return randInt(0, max)
-//  }
-//}
-
-
-function randomRValue(key) {
-  const max = R_MAX[key] ?? 1
-  return Math.round(Math.random() * max * 100) / 100
-}
-
 export function randomFnValues(fn) {
   const [c0, c1, c2, c3] = randomFnCoefficients()
   return {
@@ -94,30 +70,44 @@ export function randomFnValues(fn) {
   }
 }
 
-export function randomR() {
-  return {
-    R1: randomRValue('R1'),
-    R2: randomRValue('R2'),
-    R3: randomRValue('R3'),
-    R4: randomRValue('R4'),
+// ------------------------------------------------------------
+// R-коэффициенты: 4 на каждую R, значения в [0, 0.6]
+// ------------------------------------------------------------
+function randomRCoefficientValue() {
+  return Math.round(Math.random() * 60) / 100
+}
+
+export function randomRForOne(rIndex) {
+  const result = {}
+  for (let d = 0; d <= R_DEGREE; d++) {
+    result[`R${rIndex}_c${d}`] = randomRCoefficientValue()
   }
+  return result
+}
+
+export function randomR() {
+  const result = {}
+  for (let r = 1; r <= R_COUNT; r++) {
+    Object.assign(result, randomRForOne(r))
+  }
+  return result
 }
 
 export function randomAllValues() {
   const result = {}
   Object.assign(result, randomK())
   Object.assign(result, randomR())
-
   for (let i = 1; i <= FN_COUNT; i++) {
     Object.assign(result, randomFnValues(i))
   }
-
   return result
 }
 
 export function randomOneValue(key) {
-  if (key.startsWith('R')) return randomRValue(key)
   if (key.startsWith('K')) return randomKValue(key)
+
+  const rMatch = key.match(/^R(\d+)_c(\d+)$/)
+  if (rMatch) return randomRCoefficientValue()
 
   const m = key.match(/^f(\d+)_c(\d+)$/)
   if (m) {
@@ -130,33 +120,23 @@ export function randomOneValue(key) {
   return 0
 }
 
-//export function randomConditions(kValues = {}) {
-//  const result = {}
-//  K_KEYS.forEach((key) => {
-//    const k = Number.isFinite(kValues[key]) ? kValues[key] : 0.5
-//    const sub = k <= 0.3
-//      ? 0.05
-//      : 0.1 + Math.random() * 0.1          // 0.1 … 0.2
-//    let v = Math.round((k - sub) * 100) / 100
-//    v = Math.max(0, Math.min(0.5, v))
-//    result[key] = v
-//  })
-//  return result
-//}
-
-
-
+// ------------------------------------------------------------
+// Условия для красной линии (уже есть)
+// ------------------------------------------------------------
 export function randomConditions(values, tEnd = 10) {
   const result = {}
   if (!values) {
-    K_KEYS.forEach((k) => { result[k] = 0.5 })
+    K_KEYS.forEach((k) => {
+      result[k] = 0.5
+    })
     return result
   }
 
-  // 1) Сэмплируем K(t) на [0, tEnd], берём max по каждому ключу
   const SAMPLE = 40
   const maxK = {}
-  K_KEYS.forEach((k) => { maxK[k] = 0 })
+  K_KEYS.forEach((k) => {
+    maxK[k] = 0
+  })
 
   for (let i = 0; i <= SAMPLE; i++) {
     const t = (i / SAMPLE) * tEnd
@@ -173,14 +153,12 @@ export function randomConditions(values, tEnd = 10) {
     })
   }
 
-  // 2) Условие = max + margin
-  //    margin бимодальный: иногда «впритык», иногда «с запасом»,
-  //    чтобы красная линия не выглядела ровным кругом
   K_KEYS.forEach((k) => {
     const m = maxK[k]
-    const margin = Math.random() < 0.5
-      ? 0.02 + Math.random() * 0.05   // 0.02…0.07 — впритык
-      : 0.10 + Math.random() * 0.10   // 0.10…0.20 — с запасом
+    const margin =
+      Math.random() < 0.5
+        ? 0.02 + Math.random() * 0.05
+        : 0.1 + Math.random() * 0.1
     let cond = m + margin
     if (cond > 1) cond = 1
     if (cond < 0) cond = 0

@@ -1,19 +1,13 @@
-// ============================================================
-// 55 функций f₁…f₅₅. Каждая — полином с возрастающей степенью:
-//   f(x) = c₀ + c₁·x + c₂·x² + c₃·x³
-// Коэффициенты — целые, задаются пользователем.
-// Аргумент x — нормированное значение K (0…1).
-// ============================================================
-
 export const FN_COUNT = 55
-export const FN_DEGREE = 3 // максимум
+export const FN_DEGREE = 3
 
-// Коэффициенты по умолчанию: f(x) = x → [0, 1, 0, 0]
+export const R_COUNT = 4
+export const R_DEGREE = 3
+
 export function defaultFnCoefficients() {
   return [0, 1, 0, 0]
 }
 
-// Вычислить f(x) по массиву коэффициентов
 export function evalFn(coeffs, x) {
   let result = 0
   let p = 1
@@ -24,7 +18,22 @@ export function evalFn(coeffs, x) {
   return result
 }
 
-// Имя переменной коэффициента: f1_c0, f1_c1, …
+export function evalR(coeffs, t) {
+  return evalFn(coeffs, t)
+}
+
 export function coefName(fn, degree) {
   return `f${fn}_c${degree}`
+}
+
+export function rCoefName(rIndex, degree) {
+  return `R${rIndex}_c${degree}`
+}
+
+export function randomRCoefficients() {
+  const out = []
+  for (let i = 0; i <= R_DEGREE; i++) {
+    out.push(Math.round(Math.random() * 100) / 100) // [0, 1] шаг 0.01
+  }
+  return out
 }

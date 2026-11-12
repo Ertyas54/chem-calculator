@@ -7,9 +7,7 @@ import {
   randomK,
   randomR,
   randomOneValue,
-  randomConditions,
 } from './random'
-import { makeDefaultConditions } from './normalization'
 import FnEditor from './components/FnEditor'
 import InitialValues from './components/InitialValues'
 import REditor from './components/REditor'
@@ -18,15 +16,18 @@ import TimeChart from './components/TimeChart'
 import RadarChart from './components/RadarChart'
 
 const DEFAULT_K = {
-  K1: 0.58, K2: 0.80, K3: 0.76, K4: 0.22, K5: 0.85,
-  K6: 0.87, K7: 0.25, K8: 0.28, K9: 0.80, K10: 0.28,
-  K11: 0.47, K12: 0.19, K13: 0.38, K14: 0.33, K15: 0.20,
+  K1: 0.7, K2: 0.7, K3: 0.7, K4: 0.3, K5: 0.7,
+  K6: 0.7, K7: 0.3, K8: 0.3, K9: 0.7, K10: 0.3,
+  K11: 0.3, K12: 0.3, K13: 0.3, K14: 0.3, K15: 0.3,
 }
 
-//const DEFAULT_R = { R1: 1, R2: 1, R3: 1, R4: 0.5 }
-const DEFAULT_R = { R1: 0.1, R2: 0.1, R3: 0.1, R4: 0.05 }
-
-const K_KEYS = Array.from({ length: 15 }, (_, i) => `K${i + 1}`)
+// R-коэффициенты по умолчанию
+const DEFAULT_R = {
+  R1_c0: 0.1, R1_c1: 0.1, R1_c2: 0.05, R1_c3: 0.02,
+  R2_c0: 0.1, R2_c1: 0.1, R2_c2: 0.05, R2_c3: 0.02,
+  R3_c0: 0.1, R3_c1: 0.1, R3_c2: 0.05, R3_c3: 0.02,
+  R4_c0: 0.1, R4_c1: 0.1, R4_c2: 0.05, R4_c3: 0.02,
+}
 
 const INITIAL_VALUES = (() => {
   const init = {}
@@ -37,33 +38,24 @@ const INITIAL_VALUES = (() => {
         const deg = parseInt(m[2], 10)
         init[name] = deg === 0 ? 0 : deg === 1 ? 1 : 0.2
       }
+    } else if (name.startsWith('R')) {
+      init[name] = 0.1
     }
   })
-  Object.assign(init, DEFAULT_K, DEFAULT_R)
+  Object.assign(init, DEFAULT_K)
+  Object.assign(init, DEFAULT_R)
   return init
 })()
 
 export default function App() {
   const [values, setValues] = useState(INITIAL_VALUES)
   const [tEnd, setTEnd] = useState(10)
-  const [conditions, setConditions] = useState(makeDefaultConditions)
 
   const updateValue = (key, val) =>
     setValues((p) => ({ ...p, [key]: val }))
 
-  //const randomizeAll = () => {
-  //  const all = randomAllValues()          // K, R, f — одним куском
-  //  const newK = {}
-  //  K_KEYS.forEach((k) => { newK[k] = all[k] })
-  //  setValues((p) => ({ ...p, ...all }))
-  //  setConditions(randomConditions(newK))  // красная линия — от этих же K
-  //}
-
   const randomizeAll = () => {
-    const all = randomAllValues()
-    const merged = { ...values, ...all }
-    setValues(merged)
-    setConditions(randomConditions(merged, tEnd))
+    setValues((p) => ({ ...p, ...randomAllValues() }))
   }
 
   const randomizeFn = (fn) => {
@@ -94,7 +86,10 @@ export default function App() {
           нефтеперерабатывающего завода
         </h1>
         <div style={{ textAlign: 'center' }}>
-          <button className="btn btn-primary" onClick={randomizeAll}>
+          <button
+            className="btn btn-primary"
+            onClick={randomizeAll}
+          >
             Сгенерировать значения
           </button>
         </div>
@@ -102,7 +97,6 @@ export default function App() {
 
       <div className="layout">
         <aside className="sidebar">
-
           <div className="panel">
             <h3>Параметры интегрирования</h3>
             <div className="field">
@@ -143,12 +137,7 @@ export default function App() {
         <main className="main">
           <SourceSystem />
           <TimeChart values={values} tEnd={tEnd} points={60} />
-          <RadarChart
-            values={values}
-            tEnd={tEnd}
-            conditions={conditions}
-            onConditionsChange={setConditions}
-          />
+          <RadarChart values={values} tEnd={tEnd} />
         </main>
       </div>
     </div>
